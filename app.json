@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "match-make-app",
-    "slug": "match-make-app",
+    "name": "match-make",
+    "slug": "match-make",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "landscape",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -25,6 +25,9 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router"
+    ]
   }
 }
