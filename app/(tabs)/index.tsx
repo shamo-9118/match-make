@@ -1,19 +1,12 @@
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  TextInput,
-  Alert,
-  StyleSheet,
-  Image,
+  View, Text, FlatList, TouchableOpacity, TextInput, Alert, StyleSheet, Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useUserStore } from '../../src/store/userStore';
+import { generateId } from '../../src/utils/id';
 import { User } from '../../src/types';
-import 'react-native-get-random-values';
-import { v4 as uuidv4 } from 'uuid';
 
 export default function UsersScreen() {
   const { users, addUser, updateUser, deleteUser, resetAllStats } = useUserStore();
@@ -23,11 +16,16 @@ export default function UsersScreen() {
 
   const handleAdd = async () => {
     if (!name.trim()) return;
-    await addUser({ id: uuidv4(), name: name.trim() });
+    await addUser({ id: generateId(), name: name.trim() });
     setName('');
   };
 
   const handlePickImage = async (userId: string) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('権限が必要です', '写真ライブラリへのアクセスを許可してください');
+      return;
+    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -47,14 +45,10 @@ export default function UsersScreen() {
   };
 
   const handleResetStats = () => {
-    Alert.alert(
-      '練習終了',
-      '参加回数・対戦履歴をリセットしますか？',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        { text: '終了する', style: 'destructive', onPress: () => resetAllStats() },
-      ]
-    );
+    Alert.alert('練習終了', '参加回数・対戦履歴をリセットしますか？', [
+      { text: 'キャンセル', style: 'cancel' },
+      { text: '終了する', style: 'destructive', onPress: () => resetAllStats() },
+    ]);
   };
 
   const handleEditSave = async (id: string) => {
@@ -63,7 +57,7 @@ export default function UsersScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.title}>ユーザー管理</Text>
         <TouchableOpacity style={styles.resetBtn} onPress={handleResetStats}>
@@ -95,9 +89,10 @@ export default function UsersScreen() {
                 <Image source={{ uri: item.imagePath }} style={styles.avatar} />
               ) : (
                 <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <Text style={styles.avatarText}>{item.name[0]}</Text>
+                  <Text style={styles.avatarInitial}>{item.name[0]}</Text>
                 </View>
               )}
+              <Text style={styles.editPhotoHint}>写真</Text>
             </TouchableOpacity>
 
             {editingId === item.id ? (
@@ -117,12 +112,7 @@ export default function UsersScreen() {
               {item.totalPlayCount}試合 / {item.totalRestCount}休
             </Text>
 
-            <TouchableOpacity
-              onPress={() => {
-                setEditingId(item.id);
-                setEditName(item.name);
-              }}
-            >
+            <TouchableOpacity onPress={() => { setEditingId(item.id); setEditName(item.name); }}>
               <Text style={styles.actionText}>編集</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => handleDelete(item)}>
@@ -131,13 +121,13 @@ export default function UsersScreen() {
           </View>
         )}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: '#f5f5f5' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  container: { flex: 1, paddingHorizontal: 24, paddingBottom: 24, backgroundColor: '#f5f5f5' },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, marginTop: 8 },
   title: { fontSize: 24, fontWeight: 'bold' },
   resetBtn: { backgroundColor: '#e74c3c', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
   resetBtnText: { color: '#fff', fontWeight: 'bold' },
@@ -152,9 +142,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: '#fff', padding: 12, borderRadius: 12, marginBottom: 8,
   },
-  avatar: { width: 48, height: 48, borderRadius: 24 },
+  avatar: { width: 52, height: 52, borderRadius: 26 },
   avatarPlaceholder: { backgroundColor: '#3498db', justifyContent: 'center', alignItems: 'center' },
-  avatarText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  avatarInitial: { color: '#fff', fontWeight: 'bold', fontSize: 20 },
+  editPhotoHint: { fontSize: 10, color: '#aaa', textAlign: 'center', marginTop: 2 },
   userName: { flex: 1, fontSize: 16 },
   countText: { fontSize: 12, color: '#888' },
   actionText: { color: '#3498db', fontWeight: 'bold' },

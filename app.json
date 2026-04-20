@@ -2,6 +2,7 @@
   "expo": {
     "name": "match-make",
     "slug": "match-make",
+    "scheme": "match-make",
     "version": "1.0.0",
     "orientation": "landscape",
     "icon": "./assets/icon.png",
@@ -13,7 +14,10 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "プロフィール写真の設定に使用します"
+      }
     },
     "android": {
       "adaptiveIcon": {
