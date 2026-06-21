@@ -1,7 +1,7 @@
 import { User } from '@/types';
 
 export const USER_COLORS = [
-  'red', 'orange', 'green', 'teal', 'blue', 'violet', 'grape', 'pink',
+  'red', 'pink', 'grape', 'violet', 'indigo', 'blue', 'cyan', 'teal', 'green', 'lime', 'orange',
 ] as const;
 
 /** 既存ユーザーの色を考慮して最も使われていない色を返す */
