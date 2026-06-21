@@ -52,7 +52,7 @@ export default function SetupPage() {
 
       <AppShell.Main>
         <Stack maw={900} mx="auto" gap="lg">
-          <Title order={4}>セッション設定</Title>
+          <Title order={4}>ゲーム設定</Title>
 
           {/* コート数 */}
           <Card withBorder radius="md" padding="md">
@@ -125,7 +125,7 @@ export default function SetupPage() {
           </Card>
 
           <Button size="lg" disabled={!canStart} onClick={handleStart} color="green">
-            セッション開始 →
+            ゲーム開始 →
           </Button>
         </Stack>
       </AppShell.Main>
