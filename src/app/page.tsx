@@ -41,17 +41,13 @@ export default function HomePage() {
   return (
     <>
       <Flex h="100vh" direction="column" align="center" justify="center" gap="xl">
-        <Stack align="center" gap="xs">
-          <Image src="/app-icon.png" w={120} h={120} radius="xl" />
-          <Title order={1}>match-make</Title>
-          <Text c="dimmed">コートスポーツのメンバー割り振りをお任せ！</Text>
-        </Stack>
-
-        <Stack w={280} gap="md">
-          <Button size="xl" color="green" leftSection={<IconSwords size={24} />} onClick={() => router.push('/setup')}>
+        <Stack w={280} align="center" gap="md">
+          <Image src="/app-icon.png" w={280} radius="xl" />
+          <Text c="dimmed" ta="center">コートスポーツのメンバー割り振りをお任せ！</Text>
+          <Button w="100%" size="xl" color="green" leftSection={<IconSwords size={24} />} onClick={() => router.push('/setup')}>
             ゲーム
           </Button>
-          <Button size="xl" variant="light" leftSection={<IconUsers size={24} />} onClick={() => router.push('/users')}>
+          <Button w="100%" size="xl" variant="light" leftSection={<IconUsers size={24} />} onClick={() => router.push('/users')}>
             ユーザー管理
           </Button>
         </Stack>
