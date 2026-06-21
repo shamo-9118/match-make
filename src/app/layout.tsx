@@ -20,7 +20,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <ColorSchemeScript />
         <meta name="theme-color" content="#2d7a3a" />
-        <link rel="apple-touch-icon" href="/icon.svg" />
+        <link rel="apple-touch-icon" href="/app-icon.png" />
       </head>
       <body>
         <MantineProvider>
