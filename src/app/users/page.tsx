@@ -2,10 +2,11 @@
 import { useState, useRef } from 'react';
 import {
   AppShell, Title, TextInput, Button, Group, Stack, Avatar,
-  Text, ActionIcon, Card, Badge, Flex, Modal, Popover, ColorSwatch, SimpleGrid,
+  Text, ActionIcon, Card, Badge, Flex, Modal, Popover, ColorSwatch, SimpleGrid, Checkbox,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconPlus, IconTrash, IconPencil, IconCheck, IconX } from '@tabler/icons-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/userStore';
 import { generateId } from '@/utils/id';
@@ -18,8 +19,33 @@ export default function UsersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [resetOpened, { open: openReset, close: closeReset }] = useDisclosure(false);
+  const [shareOpened, { open: openShare, close: closeShare }] = useDisclosure(false);
+  const [selectedShareIds, setSelectedShareIds] = useState<Set<string>>(new Set());
+  const [qrUrl, setQrUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+
+  const toggleShareUser = (id: string) => {
+    setSelectedShareIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const generateQr = () => {
+    const selected = users.filter((u) => selectedShareIds.has(u.id));
+    const data = selected.map((u) => ({ name: u.name, color: u.color }));
+    const encoded = btoa(encodeURIComponent(JSON.stringify(data)));
+    const url = `${window.location.origin}/?import=${encoded}`;
+    setQrUrl(url);
+  };
+
+  const handleShareClose = () => {
+    closeShare();
+    setSelectedShareIds(new Set());
+    setQrUrl(null);
+  };
 
   const handleAdd = () => {
     if (!name.trim()) return;
@@ -49,9 +75,10 @@ export default function UsersPage() {
         <Flex h="100%" px="md" align="center" justify="space-between">
           <Button variant="subtle" onClick={() => router.push('/')}>← トップ</Button>
           <Title order={3}>ユーザー管理</Title>
-          <Button color="red" variant="light" onClick={openReset}>
-            統計リセット
-          </Button>
+          <Group gap="xs">
+            <Button variant="light" onClick={openShare}>共有</Button>
+            <Button color="red" variant="light" onClick={openReset}>統計リセット</Button>
+          </Group>
         </Flex>
       </AppShell.Header>
 
@@ -161,6 +188,36 @@ export default function UsersPage() {
           e.target.value = '';
         }}
       />
+
+      <Modal opened={shareOpened} onClose={handleShareClose} title="ユーザーを共有" centered size="sm">
+        {qrUrl ? (
+          <Stack align="center" gap="md">
+            <Text size="sm" c="dimmed">このQRコードを別のデバイスで読み取ってください</Text>
+            <QRCodeSVG value={qrUrl} size={240} />
+            <Button variant="light" onClick={() => setQrUrl(null)}>← 選択に戻る</Button>
+          </Stack>
+        ) : (
+          <Stack gap="sm">
+            <Text size="sm" c="dimmed">共有するユーザーを選択してください</Text>
+            {users.map((user) => (
+              <Card
+                key={user.id} withBorder radius="md" padding="sm"
+                onClick={() => toggleShareUser(user.id)}
+                style={{ cursor: 'pointer', borderColor: selectedShareIds.has(user.id) ? 'var(--mantine-color-blue-5)' : undefined, borderWidth: selectedShareIds.has(user.id) ? 2 : 1 }}
+              >
+                <Flex align="center" gap="sm">
+                  <Avatar src={user.imagePath} size={36} radius="xl" color={user.color}>{user.name[0]}</Avatar>
+                  <Text flex={1} fw={500}>{user.name}</Text>
+                  <Checkbox checked={selectedShareIds.has(user.id)} readOnly size="sm" />
+                </Flex>
+              </Card>
+            ))}
+            <Button disabled={selectedShareIds.size === 0} onClick={generateQr} mt="xs">
+              QRコードを生成
+            </Button>
+          </Stack>
+        )}
+      </Modal>
 
       <Modal opened={resetOpened} onClose={closeReset} title="統計リセット" centered>
         <Text>参加回数・対戦履歴をリセットしますか？</Text>

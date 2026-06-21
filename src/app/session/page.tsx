@@ -20,7 +20,7 @@ export default function SessionPage() {
   const { users, updateUserStats, updateUser } = useUserStore();
   const [participantsOpened, { open: openParticipants, close: closeParticipants }] = useDisclosure(false);
   const [endOpened, { open: openEnd, close: closeEnd }] = useDisclosure(false);
-  const [previewOpened, { toggle: togglePreview }] = useDisclosure(true);
+  const [previewOpened, { toggle: togglePreview }] = useDisclosure(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editName, setEditName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);

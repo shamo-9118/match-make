@@ -1,25 +1,77 @@
 'use client';
-import { Flex, Title, Button, Stack, Text } from '@mantine/core';
+import { useEffect, useState } from 'react';
+import { Flex, Title, Button, Stack, Text, Modal, Avatar, Group, Card } from '@mantine/core';
 import { useRouter } from 'next/navigation';
+import { useUserStore } from '@/store/userStore';
+import { generateId } from '@/utils/id';
+
+type ImportUser = { name: string; color: string };
 
 export default function HomePage() {
   const router = useRouter();
+  const { addUser, updateUser } = useUserStore();
+  const [importUsers, setImportUsers] = useState<ImportUser[]>([]);
+  const [importOpened, setImportOpened] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('import');
+    if (!raw) return;
+    try {
+      const parsed: ImportUser[] = JSON.parse(decodeURIComponent(atob(raw)));
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        setImportUsers(parsed);
+        setImportOpened(true);
+      }
+    } catch {}
+    // URLパラメータを除去
+    window.history.replaceState({}, '', '/');
+  }, []);
+
+  const handleImport = () => {
+    importUsers.forEach((u) => {
+      const id = generateId();
+      addUser({ id, name: u.name });
+      updateUser(id, { color: u.color });
+    });
+    setImportOpened(false);
+  };
 
   return (
-    <Flex h="100vh" direction="column" align="center" justify="center" gap="xl">
-      <Stack align="center" gap="xs">
-        <Title order={1}>match-make 🏓</Title>
-        <Text c="dimmed">ピックルボール コート割り振りアプリ</Text>
-      </Stack>
+    <>
+      <Flex h="100vh" direction="column" align="center" justify="center" gap="xl">
+        <Stack align="center" gap="xs">
+          <Title order={1}>match-make 🏓</Title>
+          <Text c="dimmed">ピックルボール コート割り振りアプリ</Text>
+        </Stack>
 
-      <Stack w={280} gap="md">
-        <Button size="xl" color="green" onClick={() => router.push('/setup')}>
-          ゲーム
-        </Button>
-        <Button size="xl" variant="light" onClick={() => router.push('/users')}>
-          ユーザー管理
-        </Button>
-      </Stack>
-    </Flex>
+        <Stack w={280} gap="md">
+          <Button size="xl" color="green" onClick={() => router.push('/setup')}>
+            ゲーム
+          </Button>
+          <Button size="xl" variant="light" onClick={() => router.push('/users')}>
+            ユーザー管理
+          </Button>
+        </Stack>
+      </Flex>
+
+      <Modal opened={importOpened} onClose={() => setImportOpened(false)} title="ユーザーをインポート" centered>
+        <Stack gap="sm">
+          <Text size="sm" c="dimmed">以下のユーザーを追加しますか？</Text>
+          {importUsers.map((u, i) => (
+            <Card key={i} withBorder radius="md" padding="sm">
+              <Group gap="sm">
+                <Avatar size={36} radius="xl" color={u.color}>{u.name[0]}</Avatar>
+                <Text fw={500}>{u.name}</Text>
+              </Group>
+            </Card>
+          ))}
+          <Group mt="xs" justify="flex-end">
+            <Button variant="default" onClick={() => setImportOpened(false)}>キャンセル</Button>
+            <Button onClick={handleImport}>追加する</Button>
+          </Group>
+        </Stack>
+      </Modal>
+    </>
   );
 }
