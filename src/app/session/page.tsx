@@ -167,7 +167,7 @@ export default function SessionPage() {
                 }
                 labelPosition="left"
               />
-              <Collapse in={previewOpened}>
+              <Collapse opened={previewOpened}>
                 <Stack gap="sm" style={{ opacity: 0.5 }}>
                   <SimpleGrid cols={{ base: 1, md: session.courtCount > 1 ? 2 : 1 }} spacing="md">
                     {session.nextRound.courts.map((court) => (
