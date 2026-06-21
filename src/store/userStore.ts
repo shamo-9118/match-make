@@ -7,7 +7,7 @@ import { pickColor } from '@/utils/colors';
 interface UserStore {
   users: User[];
   addUser: (user: Omit<User, 'color' | 'totalPlayCount' | 'totalRestCount' | 'pairHistory' | 'opponentHistory'>) => void;
-  updateUser: (id: string, updates: Partial<Pick<User, 'name' | 'imagePath'>>) => void;
+  updateUser: (id: string, updates: Partial<Pick<User, 'name' | 'imagePath' | 'color'>>) => void;
   deleteUser: (id: string) => void;
   updateUserStats: (updatedUsers: User[]) => void;
   resetAllStats: () => void;

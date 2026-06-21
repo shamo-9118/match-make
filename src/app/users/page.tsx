@@ -2,13 +2,14 @@
 import { useState, useRef } from 'react';
 import {
   AppShell, Title, TextInput, Button, Group, Stack, Avatar,
-  Text, ActionIcon, Card, Badge, Flex, Modal,
+  Text, ActionIcon, Card, Badge, Flex, Modal, Popover, ColorSwatch, SimpleGrid,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconPlus, IconTrash, IconPencil, IconCheck, IconX } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/userStore';
 import { generateId } from '@/utils/id';
+import { USER_COLORS } from '@/utils/colors';
 
 export default function UsersPage() {
   const router = useRouter();
@@ -73,14 +74,36 @@ export default function UsersPage() {
             {users.map((user) => (
               <Card key={user.id} withBorder padding="sm" radius="md">
                 <Flex align="center" gap="md">
-                  <Stack gap={2} align="center" style={{ cursor: 'pointer' }} onClick={() => {
-                    setUploadingId(user.id);
-                    fileInputRef.current?.click();
-                  }}>
-                    <Avatar src={user.imagePath} size={52} radius="xl" color={user.color}>
+                  <Stack gap={2} align="center">
+                    <Avatar
+                      src={user.imagePath} size={52} radius="xl" color={user.color}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => { setUploadingId(user.id); fileInputRef.current?.click(); }}
+                    >
                       {user.name[0]}
                     </Avatar>
-                    <Text size="xs" c="dimmed">写真</Text>
+                    <Popover position="bottom" withArrow shadow="md">
+                      <Popover.Target>
+                        <ColorSwatch
+                          color={`var(--mantine-color-${user.color}-5)`}
+                          size={14}
+                          style={{ cursor: 'pointer' }}
+                        />
+                      </Popover.Target>
+                      <Popover.Dropdown>
+                        <SimpleGrid cols={6} spacing={6}>
+                          {USER_COLORS.map((c) => (
+                            <ColorSwatch
+                              key={c}
+                              color={`var(--mantine-color-${c}-5)`}
+                              size={24}
+                              style={{ cursor: 'pointer', outline: user.color === c ? '2px solid var(--mantine-color-dark-5)' : 'none', outlineOffset: 2 }}
+                              onClick={() => updateUser(user.id, { color: c })}
+                            />
+                          ))}
+                        </SimpleGrid>
+                      </Popover.Dropdown>
+                    </Popover>
                   </Stack>
 
                   {editingId === user.id ? (

@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import {
   AppShell, Button, Group, Stack, Avatar, Text, Card,
-  Flex, Badge, Modal, SimpleGrid, Paper,
+  Flex, Badge, Modal, SimpleGrid, Paper, Divider, Collapse,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
@@ -18,6 +18,7 @@ export default function SessionPage() {
   const { users, updateUserStats } = useUserStore();
   const [participantsOpened, { open: openParticipants, close: closeParticipants }] = useDisclosure(false);
   const [endOpened, { open: openEnd, close: closeEnd }] = useDisclosure(false);
+  const [previewOpened, { toggle: togglePreview }] = useDisclosure(true);
 
   const isViewing = session ? session.currentRoundIndex < session.latestRoundIndex : false;
   const currentRound: Round | null = session ? session.rounds[session.currentRoundIndex] ?? null : null;
@@ -130,6 +131,47 @@ export default function SessionPage() {
             <Flex align="center" justify="center" h={300}>
               <Text c="dimmed" size="xl">「次へ」を押してゲームを開始</Text>
             </Flex>
+          )}
+
+          {/* 次ラウンドプレビュー */}
+          {!isViewing && session.nextRound && (
+            <Stack gap="sm" mt="md">
+              <Divider
+                label={
+                  <Button size="xs" variant="subtle" color="dimmed" onClick={togglePreview}>
+                    次のラウンド {previewOpened ? '▲' : '▼'}
+                  </Button>
+                }
+                labelPosition="left"
+              />
+              <Collapse in={previewOpened}>
+                <Stack gap="sm" style={{ opacity: 0.5 }}>
+                  <SimpleGrid cols={{ base: 1, md: session.courtCount > 1 ? 2 : 1 }} spacing="md">
+                    {session.nextRound.courts.map((court) => (
+                      <CourtCard key={court.courtNumber} court={court} users={users} />
+                    ))}
+                  </SimpleGrid>
+                  {session.nextRound.restingPlayerIds.length > 0 && (
+                    <Card withBorder radius="md" padding="sm">
+                      <Text fw={600} c="dimmed" mb="xs" size="sm">休憩</Text>
+                      <Group>
+                        {session.nextRound.restingPlayerIds.map((id) => {
+                          const u = users.find((u) => u.id === id);
+                          return (
+                            <Stack key={id} align="center" gap={2}>
+                              <Avatar src={u?.imagePath} size={36} radius="xl" color={u?.color ?? 'gray'}>
+                                {u?.name[0] ?? '?'}
+                              </Avatar>
+                              <Text size="xs" c="dimmed">{u?.name ?? id}</Text>
+                            </Stack>
+                          );
+                        })}
+                      </Group>
+                    </Card>
+                  )}
+                </Stack>
+              </Collapse>
+            </Stack>
           )}
         </Stack>
       </AppShell.Main>
