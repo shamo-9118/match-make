@@ -1,8 +1,9 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   AppShell, Button, Group, Stack, Avatar, Text, Card,
   Flex, Badge, Modal, SimpleGrid, Paper, Divider, Collapse,
+  TextInput, Popover, ColorSwatch,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
@@ -10,15 +11,19 @@ import { useSessionStore } from '@/store/sessionStore';
 import { useUserStore } from '@/store/userStore';
 import { generateRound, applyRoundToUsers, initLateJoiner } from '@/utils/algorithm';
 import { Court, Round, User } from '@/types';
+import { USER_COLORS } from '@/utils/colors';
 
 export default function SessionPage() {
   const router = useRouter();
   const session = useSessionStore((s) => s.session);
   const { confirmNextRound, setNextRound, goBack, goToLatest, updateParticipants, endSession } = useSessionStore();
-  const { users, updateUserStats } = useUserStore();
+  const { users, updateUserStats, updateUser } = useUserStore();
   const [participantsOpened, { open: openParticipants, close: closeParticipants }] = useDisclosure(false);
   const [endOpened, { open: openEnd, close: closeEnd }] = useDisclosure(false);
   const [previewOpened, { toggle: togglePreview }] = useDisclosure(true);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editName, setEditName] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isViewing = session ? session.currentRoundIndex < session.latestRoundIndex : false;
   const currentRound: Round | null = session ? session.rounds[session.currentRoundIndex] ?? null : null;
@@ -39,6 +44,24 @@ export default function SessionPage() {
     updateUserStats(updatedUsers);
     confirmNextRound();
     scheduleNextRound(session.nextRound, updatedUsers, session.participantIds);
+  };
+
+  const openEditUser = (user: User) => {
+    setEditingUser(user);
+    setEditName(user.name);
+  };
+
+  const handleEditSave = () => {
+    if (!editingUser) return;
+    if (editName.trim()) updateUser(editingUser.id, { name: editName.trim() });
+    setEditingUser(null);
+  };
+
+  const handleImageUpload = (file: File) => {
+    if (!editingUser) return;
+    const reader = new FileReader();
+    reader.onload = (e) => updateUser(editingUser.id, { imagePath: e.target?.result as string });
+    reader.readAsDataURL(file);
   };
 
   const toggleParticipant = (userId: string) => {
@@ -104,7 +127,7 @@ export default function SessionPage() {
             <>
               <SimpleGrid cols={{ base: 1, md: session.courtCount > 1 ? 2 : 1 }} spacing="lg">
                 {currentRound.courts.map((court) => (
-                  <CourtCard key={court.courtNumber} court={court} users={users} />
+                  <CourtCard key={court.courtNumber} court={court} users={users} onPlayerClick={openEditUser} />
                 ))}
               </SimpleGrid>
 
@@ -115,7 +138,7 @@ export default function SessionPage() {
                     {currentRound.restingPlayerIds.map((id) => {
                       const u = users.find((u) => u.id === id);
                       return (
-                        <Stack key={id} align="center" gap={4}>
+                        <Stack key={id} align="center" gap={4} style={{ cursor: 'pointer' }} onClick={() => u && openEditUser(u)}>
                           <Avatar src={u?.imagePath} size={44} radius="xl" color={u?.color ?? 'gray'}>
                             {u?.name[0] ?? '?'}
                           </Avatar>
@@ -200,6 +223,63 @@ export default function SessionPage() {
         </Group>
       </Modal>
 
+      {/* ユーザー編集 */}
+      <Modal opened={!!editingUser} onClose={() => setEditingUser(null)} title="ユーザー編集" centered size="sm">
+        {editingUser && (
+          <Stack gap="md">
+            <Flex align="center" gap="md">
+              <Stack align="center" gap={4} style={{ cursor: 'pointer' }} onClick={() => fileInputRef.current?.click()}>
+                <Avatar src={editingUser.imagePath} size={64} radius="xl" color={editingUser.color}>
+                  {editingUser.name[0]}
+                </Avatar>
+                <Text size="xs" c="dimmed">写真変更</Text>
+              </Stack>
+              <Stack gap="xs" flex={1}>
+                <TextInput
+                  label="名前"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleEditSave()}
+                />
+              </Stack>
+            </Flex>
+            <Stack gap="xs">
+              <Text size="sm" fw={500}>カラー</Text>
+              <SimpleGrid cols={6} spacing={8}>
+                {USER_COLORS.map((c) => (
+                  <ColorSwatch
+                    key={c}
+                    color={`var(--mantine-color-${c}-5)`}
+                    size={28}
+                    style={{ cursor: 'pointer', outline: editingUser.color === c ? '2px solid var(--mantine-color-dark-5)' : 'none', outlineOffset: 2 }}
+                    onClick={() => {
+                      updateUser(editingUser.id, { color: c });
+                      setEditingUser({ ...editingUser, color: c });
+                    }}
+                  />
+                ))}
+              </SimpleGrid>
+            </Stack>
+            <Group justify="flex-end">
+              <Button variant="default" onClick={() => setEditingUser(null)}>キャンセル</Button>
+              <Button onClick={handleEditSave}>保存</Button>
+            </Group>
+          </Stack>
+        )}
+      </Modal>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) handleImageUpload(file);
+          e.target.value = '';
+        }}
+      />
+
       {/* 参加者管理 */}
       <Modal opened={participantsOpened} onClose={closeParticipants} title="参加者管理" size="md">
         <Stack gap="sm">
@@ -227,13 +307,13 @@ export default function SessionPage() {
 
 const COURT_GREEN = '#2d7a3a';
 
-function CourtCard({ court, users }: { court: Court; users: User[] }) {
+function CourtCard({ court, users, onPlayerClick }: { court: Court; users: User[]; onPlayerClick: (user: User) => void }) {
   const getUser = (id: string) => users.find((u) => u.id === id);
 
   const PlayerChip = ({ id }: { id: string }) => {
     const u = getUser(id);
     return (
-      <Stack align="center" gap={6}>
+      <Stack align="center" gap={6} style={{ cursor: 'pointer' }} onClick={() => u && onPlayerClick(u)}>
         <Avatar
           src={u?.imagePath} size={64} radius="xl"
           style={{ border: '3px solid white' }}
