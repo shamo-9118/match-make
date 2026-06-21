@@ -198,7 +198,19 @@ export default function UsersPage() {
           </Stack>
         ) : (
           <Stack gap="sm">
-            <Text size="sm" c="dimmed">共有するユーザーを選択してください</Text>
+            <Flex align="center" justify="space-between">
+              <Text size="sm" c="dimmed">共有するユーザーを選択してください</Text>
+              <Button
+                size="xs" variant="subtle"
+                onClick={() =>
+                  selectedShareIds.size === users.length
+                    ? setSelectedShareIds(new Set())
+                    : setSelectedShareIds(new Set(users.map((u) => u.id)))
+                }
+              >
+                {selectedShareIds.size === users.length ? '全解除' : '全選択'}
+              </Button>
+            </Flex>
             {users.map((user) => (
               <Card
                 key={user.id} withBorder radius="md" padding="sm"
