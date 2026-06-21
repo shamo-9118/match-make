@@ -20,6 +20,7 @@ export default function UsersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [resetOpened, { open: openReset, close: closeReset }] = useDisclosure(false);
+  const [deletingUser, setDeletingUser] = useState<{ id: string; name: string } | null>(null);
   const [shareOpened, { open: openShare, close: closeShare }] = useDisclosure(false);
   const [selectedShareIds, setSelectedShareIds] = useState<Set<string>>(new Set());
   const [qrUrl, setQrUrl] = useState<string | null>(null);
@@ -254,7 +255,7 @@ export default function UsersPage() {
                       <ActionIcon variant="light" onClick={() => { setEditingId(user.id); setEditName(user.name); }}>
                         <IconPencil size={16} />
                       </ActionIcon>
-                      <ActionIcon variant="light" color="red" onClick={() => deleteUser(user.id)}>
+                      <ActionIcon variant="light" color="red" onClick={() => setDeletingUser({ id: user.id, name: user.name })}>
                         <IconTrash size={16} />
                       </ActionIcon>
                     </Group>
@@ -354,6 +355,14 @@ export default function UsersPage() {
             <canvas ref={canvasRef} style={{ display: 'none' }} />
           </Stack>
         )}
+      </Modal>
+
+      <Modal opened={!!deletingUser} onClose={() => setDeletingUser(null)} title="ユーザーを削除" centered>
+        <Text>「{deletingUser?.name}」を削除しますか？</Text>
+        <Group mt="md" justify="flex-end">
+          <Button variant="default" onClick={() => setDeletingUser(null)}>キャンセル</Button>
+          <Button color="red" onClick={() => { deleteUser(deletingUser!.id); setDeletingUser(null); }}>削除</Button>
+        </Group>
       </Modal>
 
       <Modal opened={resetOpened} onClose={closeReset} title="統計リセット" centered>
