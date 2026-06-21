@@ -1,8 +1,8 @@
 'use client';
 import { useState } from 'react';
 import {
-  AppShell, Title, Button, Group, Stack, Avatar, Text, Card,
-  Flex, Badge, Modal, Switch, SimpleGrid, Paper,
+  AppShell, Button, Group, Stack, Avatar, Text, Card,
+  Flex, Badge, Modal, SimpleGrid, Paper,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
