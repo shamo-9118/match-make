@@ -1,4 +1,4 @@
-const CACHE_NAME = 'match-make-v1';
+const CACHE_NAME = 'match-make-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
