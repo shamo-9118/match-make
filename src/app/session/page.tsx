@@ -16,7 +16,7 @@ import { USER_COLORS } from '@/utils/colors';
 export default function SessionPage() {
   const router = useRouter();
   const session = useSessionStore((s) => s.session);
-  const { confirmNextRound, setNextRound, goBack, goToLatest, updateParticipants, endSession } = useSessionStore();
+  const { confirmNextRound, setNextRound, goBack, goToLatest, updateParticipants, swapNextRoundPlayers, endSession } = useSessionStore();
   const { users, updateUserStats, updateUser } = useUserStore();
   const [participantsOpened, { open: openParticipants, close: closeParticipants }] = useDisclosure(false);
   const [endOpened, { open: openEnd, close: closeEnd }] = useDisclosure(false);
@@ -24,6 +24,8 @@ export default function SessionPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [editName, setEditName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [swapMode, setSwapMode] = useState(false);
+  const [selectedSwapId, setSelectedSwapId] = useState<string | null>(null);
 
   const isViewing = session ? session.currentRoundIndex < session.latestRoundIndex : false;
   const currentRound: Round | null = session ? session.rounds[session.currentRoundIndex] ?? null : null;
@@ -49,6 +51,23 @@ export default function SessionPage() {
   const openEditUser = (user: User) => {
     setEditingUser(user);
     setEditName(user.name);
+  };
+
+  const handleSwapClick = (userId: string) => {
+    if (!selectedSwapId) {
+      setSelectedSwapId(userId);
+    } else if (selectedSwapId === userId) {
+      setSelectedSwapId(null);
+    } else {
+      swapNextRoundPlayers(selectedSwapId, userId);
+      setSelectedSwapId(null);
+      setSwapMode(false);
+    }
+  };
+
+  const exitSwapMode = () => {
+    setSwapMode(false);
+    setSelectedSwapId(null);
   };
 
   const handleEditSave = () => {
@@ -161,17 +180,35 @@ export default function SessionPage() {
             <Stack gap="sm" mt="md">
               <Divider
                 label={
-                  <Button size="xs" variant="subtle" color="dimmed" onClick={togglePreview}>
-                    次のラウンド {previewOpened ? '▲' : '▼'}
-                  </Button>
+                  <Group gap="xs">
+                    <Button size="xs" variant="subtle" color="dimmed" onClick={togglePreview}>
+                      次のラウンド {previewOpened ? '▲' : '▼'}
+                    </Button>
+                    {previewOpened && (
+                      <Button
+                        size="xs"
+                        variant={swapMode ? 'filled' : 'light'}
+                        color="orange"
+                        onClick={() => swapMode ? exitSwapMode() : setSwapMode(true)}
+                      >
+                        {swapMode ? (selectedSwapId ? '交換相手を選択' : 'キャンセル') : '交代'}
+                      </Button>
+                    )}
+                  </Group>
                 }
                 labelPosition="left"
               />
               {previewOpened && (
-                <Stack gap="sm" style={{ opacity: 0.5 }}>
+                <Stack gap="sm" style={{ opacity: swapMode ? 1 : 0.5 }}>
                   <SimpleGrid cols={{ base: 1, md: session.courtCount > 1 ? 2 : 1 }} spacing="md">
                     {session.nextRound.courts.map((court) => (
-                      <CourtCard key={court.courtNumber} court={court} users={users} onPlayerClick={openEditUser} />
+                      <CourtCard
+                        key={court.courtNumber}
+                        court={court}
+                        users={users}
+                        onPlayerClick={swapMode ? (u) => handleSwapClick(u.id) : openEditUser}
+                        selectedId={swapMode ? selectedSwapId : null}
+                      />
                     ))}
                   </SimpleGrid>
                   {session.nextRound.restingPlayerIds.length > 0 && (
@@ -180,8 +217,13 @@ export default function SessionPage() {
                       <Group>
                         {session.nextRound.restingPlayerIds.map((id) => {
                           const u = users.find((u) => u.id === id);
+                          const isSelected = swapMode && selectedSwapId === id;
                           return (
-                            <Stack key={id} align="center" gap={2}>
+                            <Stack
+                              key={id} align="center" gap={2}
+                              style={{ cursor: swapMode ? 'pointer' : 'default', outline: isSelected ? '2px solid var(--mantine-color-orange-5)' : 'none', borderRadius: 8 }}
+                              onClick={() => swapMode && handleSwapClick(id)}
+                            >
                               <Avatar src={u?.imagePath} size={36} radius="xl" color={u?.color ?? 'gray'}>
                                 {u?.name[0] ?? '?'}
                               </Avatar>
@@ -307,16 +349,17 @@ export default function SessionPage() {
 
 const COURT_GREEN = '#2d7a3a';
 
-function CourtCard({ court, users, onPlayerClick }: { court: Court; users: User[]; onPlayerClick: (user: User) => void }) {
+function CourtCard({ court, users, onPlayerClick, selectedId }: { court: Court; users: User[]; onPlayerClick: (user: User) => void; selectedId?: string | null }) {
   const getUser = (id: string) => users.find((u) => u.id === id);
 
   const PlayerChip = ({ id }: { id: string }) => {
     const u = getUser(id);
+    const isSelected = selectedId === id;
     return (
       <Stack align="center" gap={6} style={{ cursor: 'pointer' }} onClick={() => u && onPlayerClick(u)}>
         <Avatar
           src={u?.imagePath} size={64} radius="xl"
-          style={{ border: '3px solid white' }}
+          style={{ border: isSelected ? '3px solid var(--mantine-color-orange-4)' : '3px solid white', boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
           color={u?.color ?? 'blue'}
         >
           {u?.name[0] ?? '?'}
