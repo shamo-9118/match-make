@@ -199,7 +199,7 @@ function CourtCard({ court, users }: { court: Court; users: User[] }) {
         >
           {u?.name[0] ?? '?'}
         </Avatar>
-        <Text size="sm" fw={700} c="white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
+        <Text size="md" fw={700} c="white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
           {u?.name ?? id}
         </Text>
       </Stack>
