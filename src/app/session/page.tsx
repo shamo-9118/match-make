@@ -160,7 +160,19 @@ export default function SessionPage() {
           <Text fw={700} size="lg">
             {totalRounds > 0 ? `ラウンド ${displayIndex + 1} / ${totalRounds}` : '開始前'}
           </Text>
-          <Button variant="light" size="sm" onClick={openParticipants}>参加者管理</Button>
+          <Group gap="xs">
+            {currentRound && !isViewing && (
+              <Button
+                size="sm"
+                variant={currentSwapMode ? 'filled' : 'light'}
+                color="orange"
+                onClick={() => currentSwapMode ? exitCurrentSwapMode() : setCurrentSwapMode(true)}
+              >
+                {currentSwapMode ? (selectedCurrentSwapId ? '交換相手を選択' : 'キャンセル') : '交代'}
+              </Button>
+            )}
+            <Button variant="light" size="sm" onClick={openParticipants}>参加者管理</Button>
+          </Group>
         </Flex>
       </AppShell.Header>
 
@@ -179,19 +191,7 @@ export default function SessionPage() {
         <Stack style={{ opacity: isViewing ? 0.65 : 1 }}>
           {currentRound ? (
             <>
-              {!isViewing && (
-                <Flex justify="flex-end">
-                  <Button
-                    size="xs"
-                    variant={currentSwapMode ? 'filled' : 'light'}
-                    color="orange"
-                    onClick={() => currentSwapMode ? exitCurrentSwapMode() : setCurrentSwapMode(true)}
-                  >
-                    {currentSwapMode ? (selectedCurrentSwapId ? '交換相手を選択' : 'キャンセル') : '交代'}
-                  </Button>
-                </Flex>
-              )}
-              <SimpleGrid cols={{ base: 1, md: session.courtCount > 1 ? 2 : 1 }} spacing="lg">
+<SimpleGrid cols={{ base: 1, md: session.courtCount > 1 ? 2 : 1 }} spacing="lg">
                 {currentRound.courts.map((court) => (
                   <CourtCard
                     key={court.courtNumber} court={court} users={users}
