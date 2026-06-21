@@ -412,15 +412,15 @@ function CourtCard({ court, users, onPlayerClick, selectedId }: { court: Court; 
     const u = getUser(id);
     const isSelected = selectedId === id;
     return (
-      <Stack align="center" gap={6} style={{ cursor: 'pointer' }} onClick={() => u && onPlayerClick(u)}>
+      <Stack align="center" gap={8} style={{ cursor: 'pointer' }} onClick={() => u && onPlayerClick(u)}>
         <Avatar
-          src={u?.imagePath} size={64} radius="xl"
-          style={{ border: isSelected ? '3px solid var(--mantine-color-orange-4)' : '3px solid white', boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
+          src={u?.imagePath} size={80} radius="xl"
+          style={{ border: isSelected ? '3px solid var(--mantine-color-orange-4)' : 'none', boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
           color={u?.color ?? 'blue'}
         >
           {u?.name[0] ?? '?'}
         </Avatar>
-        <Text size="md" fw={700} c="white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
+        <Text size="lg" fw={700} c="white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
           {u?.name ?? id}
         </Text>
       </Stack>
@@ -437,7 +437,7 @@ function CourtCard({ court, users, onPlayerClick, selectedId }: { court: Court; 
       {/* コートフィールド */}
       <Flex
         bg={COURT_GREEN} p="xl" align="center" justify="space-around"
-        style={{ border: '3px solid white', borderTop: 'none', minHeight: 180 }}
+        style={{ minHeight: 180 }}
       >
         {/* チームA */}
         <Stack align="center" flex={1} gap="md">
