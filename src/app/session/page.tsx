@@ -22,8 +22,8 @@ export default function SessionPage() {
   const isViewing = session ? session.currentRoundIndex < session.latestRoundIndex : false;
   const currentRound: Round | null = session ? session.rounds[session.currentRoundIndex] ?? null : null;
 
-  const scheduleNextRound = (afterRound: Round, updatedUsers: User[]) => {
-    const participants = updatedUsers.filter((u) => session!.participantIds.includes(u.id));
+  const scheduleNextRound = (afterRound: Round, updatedUsers: User[], participantIds: string[]) => {
+    const participants = updatedUsers.filter((u) => participantIds.includes(u.id));
     setTimeout(() => {
       const next = generateRound(participants, session!.courtCount, session!.gameFormat, afterRound.restingPlayerIds, afterRound.index + 1);
       setNextRound(next);
@@ -37,23 +37,28 @@ export default function SessionPage() {
     const updatedUsers = applyRoundToUsers(session.nextRound, users);
     updateUserStats(updatedUsers);
     confirmNextRound();
-    scheduleNextRound(session.nextRound, updatedUsers);
+    scheduleNextRound(session.nextRound, updatedUsers, session.participantIds);
   };
 
   const toggleParticipant = (userId: string) => {
     if (!session) return;
     const isIn = session.participantIds.includes(userId);
+    let updatedUsers = users;
+    let updatedParticipantIds = session.participantIds;
     if (isIn) {
-      updateParticipants(session.participantIds.filter((id) => id !== userId));
+      updatedParticipantIds = session.participantIds.filter((id) => id !== userId);
+      updateParticipants(updatedParticipantIds);
     } else {
       const participants = users.filter((u) => session.participantIds.includes(u.id));
       const user = users.find((u) => u.id === userId)!;
       const initialized = initLateJoiner(user, participants);
+      updatedUsers = users.map((u) => (u.id === userId ? initialized : u));
+      updatedParticipantIds = [...session.participantIds, userId];
       updateUserStats([initialized]);
-      updateParticipants([...session.participantIds, userId]);
+      updateParticipants(updatedParticipantIds);
     }
     if (session.rounds.length > 0) {
-      scheduleNextRound(session.rounds[session.latestRoundIndex], users);
+      scheduleNextRound(session.rounds[session.latestRoundIndex], updatedUsers, updatedParticipantIds);
     }
   };
 
