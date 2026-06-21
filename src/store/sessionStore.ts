@@ -11,6 +11,7 @@ interface SessionStore {
   goToLatest: () => void;
   updateParticipants: (participantIds: string[]) => void;
   swapNextRoundPlayers: (idA: string, idB: string) => void;
+  swapCurrentRoundPlayers: (idA: string, idB: string) => void;
   endSession: () => void;
 }
 
@@ -70,6 +71,23 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const { session } = get();
     if (!session) return;
     set({ session: { ...session, participantIds } });
+  },
+
+  swapCurrentRoundPlayers: (idA, idB) => {
+    const { session } = get();
+    if (!session || session.currentRoundIndex < 0) return;
+    const idx = session.currentRoundIndex;
+    const round = session.rounds[idx];
+    const newCourts = round.courts.map((court) => ({
+      ...court,
+      teamA: court.teamA.map((id) => (id === idA ? idB : id === idB ? idA : id)),
+      teamB: court.teamB.map((id) => (id === idA ? idB : id === idB ? idA : id)),
+    }));
+    const newResting = round.restingPlayerIds.map((id) => (id === idA ? idB : id === idB ? idA : id));
+    const newRounds = session.rounds.map((r, i) =>
+      i === idx ? { ...r, courts: newCourts, restingPlayerIds: newResting } : r
+    );
+    set({ session: { ...session, rounds: newRounds } });
   },
 
   swapNextRoundPlayers: (idA, idB) => {

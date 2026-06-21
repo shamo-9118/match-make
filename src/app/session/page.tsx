@@ -9,14 +9,14 @@ import { useDisclosure } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
 import { useSessionStore } from '@/store/sessionStore';
 import { useUserStore } from '@/store/userStore';
-import { generateRound, applyRoundToUsers, initLateJoiner } from '@/utils/algorithm';
+import { generateRound, applyRoundToUsers, revertRoundFromUsers, initLateJoiner } from '@/utils/algorithm';
 import { Court, Round, User } from '@/types';
 import { USER_COLORS } from '@/utils/colors';
 
 export default function SessionPage() {
   const router = useRouter();
   const session = useSessionStore((s) => s.session);
-  const { confirmNextRound, setNextRound, goBack, goToLatest, updateParticipants, swapNextRoundPlayers, endSession } = useSessionStore();
+  const { confirmNextRound, setNextRound, goBack, goToLatest, updateParticipants, swapNextRoundPlayers, swapCurrentRoundPlayers, endSession } = useSessionStore();
   const { users, updateUserStats, updateUser } = useUserStore();
   const [participantsOpened, { open: openParticipants, close: closeParticipants }] = useDisclosure(false);
   const [endOpened, { open: openEnd, close: closeEnd }] = useDisclosure(false);
@@ -26,6 +26,8 @@ export default function SessionPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [swapMode, setSwapMode] = useState(false);
   const [selectedSwapId, setSelectedSwapId] = useState<string | null>(null);
+  const [currentSwapMode, setCurrentSwapMode] = useState(false);
+  const [selectedCurrentSwapId, setSelectedCurrentSwapId] = useState<string | null>(null);
 
   const isViewing = session ? session.currentRoundIndex < session.latestRoundIndex : false;
   const currentRound: Round | null = session ? session.rounds[session.currentRoundIndex] ?? null : null;
@@ -42,6 +44,7 @@ export default function SessionPage() {
     if (!session) return;
     if (isViewing) { goToLatest(); return; }
     if (!session.nextRound) return;
+    exitCurrentSwapMode();
     const updatedUsers = applyRoundToUsers(session.nextRound, users);
     updateUserStats(updatedUsers);
     confirmNextRound();
@@ -68,6 +71,38 @@ export default function SessionPage() {
   const exitSwapMode = () => {
     setSwapMode(false);
     setSelectedSwapId(null);
+  };
+
+  const handleCurrentSwapClick = (userId: string) => {
+    if (!selectedCurrentSwapId) {
+      setSelectedCurrentSwapId(userId);
+    } else if (selectedCurrentSwapId === userId) {
+      setSelectedCurrentSwapId(null);
+    } else {
+      const idA = selectedCurrentSwapId;
+      const idB = userId;
+      const oldRound = session!.rounds[session!.currentRoundIndex];
+      // 新ラウンドをローカルで計算
+      const newCourts = oldRound.courts.map((court) => ({
+        ...court,
+        teamA: court.teamA.map((id) => (id === idA ? idB : id === idB ? idA : id)),
+        teamB: court.teamB.map((id) => (id === idA ? idB : id === idB ? idA : id)),
+      }));
+      const newResting = oldRound.restingPlayerIds.map((id) => (id === idA ? idB : id === idB ? idA : id));
+      const newRound = { ...oldRound, courts: newCourts, restingPlayerIds: newResting };
+      // 旧統計を打ち消し → 新統計を適用
+      const reverted = revertRoundFromUsers(oldRound, users);
+      const updated = applyRoundToUsers(newRound, reverted);
+      updateUserStats(updated);
+      swapCurrentRoundPlayers(idA, idB);
+      setSelectedCurrentSwapId(null);
+      setCurrentSwapMode(false);
+    }
+  };
+
+  const exitCurrentSwapMode = () => {
+    setCurrentSwapMode(false);
+    setSelectedCurrentSwapId(null);
   };
 
   const handleEditSave = () => {
@@ -144,9 +179,25 @@ export default function SessionPage() {
         <Stack style={{ opacity: isViewing ? 0.65 : 1 }}>
           {currentRound ? (
             <>
+              {!isViewing && (
+                <Flex justify="flex-end">
+                  <Button
+                    size="xs"
+                    variant={currentSwapMode ? 'filled' : 'light'}
+                    color="orange"
+                    onClick={() => currentSwapMode ? exitCurrentSwapMode() : setCurrentSwapMode(true)}
+                  >
+                    {currentSwapMode ? (selectedCurrentSwapId ? '交換相手を選択' : 'キャンセル') : '交代'}
+                  </Button>
+                </Flex>
+              )}
               <SimpleGrid cols={{ base: 1, md: session.courtCount > 1 ? 2 : 1 }} spacing="lg">
                 {currentRound.courts.map((court) => (
-                  <CourtCard key={court.courtNumber} court={court} users={users} onPlayerClick={openEditUser} />
+                  <CourtCard
+                    key={court.courtNumber} court={court} users={users}
+                    onPlayerClick={currentSwapMode ? (u) => handleCurrentSwapClick(u.id) : openEditUser}
+                    selectedId={currentSwapMode ? selectedCurrentSwapId : null}
+                  />
                 ))}
               </SimpleGrid>
 
@@ -156,8 +207,13 @@ export default function SessionPage() {
                   <Group>
                     {currentRound.restingPlayerIds.map((id) => {
                       const u = users.find((u) => u.id === id);
+                      const isSelected = currentSwapMode && selectedCurrentSwapId === id;
                       return (
-                        <Stack key={id} align="center" gap={4} style={{ cursor: 'pointer' }} onClick={() => u && openEditUser(u)}>
+                        <Stack
+                          key={id} align="center" gap={4}
+                          style={{ cursor: currentSwapMode ? 'pointer' : 'pointer', outline: isSelected ? '2px solid var(--mantine-color-orange-5)' : 'none', borderRadius: 8 }}
+                          onClick={() => currentSwapMode ? handleCurrentSwapClick(id) : u && openEditUser(u)}
+                        >
                           <Avatar src={u?.imagePath} size={44} radius="xl" color={u?.color ?? 'gray'}>
                             {u?.name[0] ?? '?'}
                           </Avatar>

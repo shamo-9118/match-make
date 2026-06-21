@@ -280,6 +280,47 @@ export function applyRoundToUsers(round: Round, users: User[]): User[] {
 }
 
 /**
+ * applyRoundToUsers の逆操作 — 交代によるラウンド修正前に呼ぶ
+ */
+export function revertRoundFromUsers(round: Round, users: User[]): User[] {
+  return users.map((user) => {
+    const isResting = round.restingPlayerIds.includes(user.id);
+    const court = round.courts.find((c) => [...c.teamA, ...c.teamB].includes(user.id));
+
+    if (isResting) {
+      return { ...user, totalRestCount: Math.max(0, user.totalRestCount - 1) };
+    }
+
+    if (!court) return user;
+
+    const inTeamA = court.teamA.includes(user.id);
+    const myTeam = inTeamA ? court.teamA : court.teamB;
+    const opponents = inTeamA ? court.teamB : court.teamA;
+
+    const newPairHistory = { ...user.pairHistory };
+    for (const partnerId of myTeam.filter((id) => id !== user.id)) {
+      const val = (newPairHistory[partnerId] ?? 0) - 1;
+      if (val <= 0) delete newPairHistory[partnerId];
+      else newPairHistory[partnerId] = val;
+    }
+
+    const newOpponentHistory = { ...user.opponentHistory };
+    for (const opponentId of opponents) {
+      const val = (newOpponentHistory[opponentId] ?? 0) - 1;
+      if (val <= 0) delete newOpponentHistory[opponentId];
+      else newOpponentHistory[opponentId] = val;
+    }
+
+    return {
+      ...user,
+      totalPlayCount: Math.max(0, user.totalPlayCount - 1),
+      pairHistory: newPairHistory,
+      opponentHistory: newOpponentHistory,
+    };
+  });
+}
+
+/**
  * 途中参加ユーザーのカウントを現参加者の平均で初期化
  */
 export function initLateJoiner(user: User, participants: User[]): User {
