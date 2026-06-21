@@ -441,7 +441,6 @@ function CourtCard({ court, users, onPlayerClick, selectedId }: { court: Court; 
       >
         {/* チームA */}
         <Stack align="center" flex={1} gap="md">
-          <Text size="xs" fw={700} c="rgba(255,255,255,0.7)" style={{ letterSpacing: 2 }}>TEAM A</Text>
           <Group gap="xl" justify="center">
             {court.teamA.map((id) => <PlayerChip key={id} id={id} />)}
           </Group>
@@ -456,7 +455,6 @@ function CourtCard({ court, users, onPlayerClick, selectedId }: { court: Court; 
 
         {/* チームB */}
         <Stack align="center" flex={1} gap="md">
-          <Text size="xs" fw={700} c="rgba(255,255,255,0.7)" style={{ letterSpacing: 2 }}>TEAM B</Text>
           <Group gap="xl" justify="center">
             {court.teamB.map((id) => <PlayerChip key={id} id={id} />)}
           </Group>
