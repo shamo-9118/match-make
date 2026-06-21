@@ -10,53 +10,120 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-/** 配列から重複なく選ぶ組み合わせを生成 */
-function combinations<T>(arr: T[], k: number): T[][] {
-  if (k === 0) return [[]];
-  if (arr.length < k) return [];
-  const [first, ...rest] = arr;
-  const withFirst = combinations(rest, k - 1).map((c) => [first, ...c]);
-  const withoutFirst = combinations(rest, k);
-  return [...withFirst, ...withoutFirst];
-}
-
-/** ペアのスコア（同ペア回数の合計）を計算 */
-function pairScore(teamA: string[], teamB: string[], users: User[]): number {
-  let score = 0;
-  const getUser = (id: string) => users.find((u) => u.id === id)!;
-
-  // チーム内ペアスコア（ダブルスのみ）
-  if (teamA.length === 2) {
-    score += (getUser(teamA[0]).pairHistory[teamA[1]] ?? 0);
-    score += (getUser(teamA[1]).pairHistory[teamA[0]] ?? 0);
-  }
-  if (teamB.length === 2) {
-    score += (getUser(teamB[0]).pairHistory[teamB[1]] ?? 0);
-    score += (getUser(teamB[1]).pairHistory[teamB[0]] ?? 0);
-  }
-
-  // 対戦スコア
-  for (const a of teamA) {
-    for (const b of teamB) {
-      score += (getUser(a).opponentHistory[b] ?? 0);
-      score += (getUser(b).opponentHistory[a] ?? 0);
+/** 全プレーヤーを2人ずつのペアに分ける全パターンを生成（完全マッチング） */
+function perfectMatchings(players: string[]): [string, string][][] {
+  if (players.length === 0) return [[]];
+  const [first, ...rest] = players;
+  const result: [string, string][][] = [];
+  for (let i = 0; i < rest.length; i++) {
+    const partner = rest[i];
+    const remaining = rest.filter((_, j) => j !== i);
+    for (const sub of perfectMatchings(remaining)) {
+      result.push([[first, partner], ...sub]);
     }
   }
+  return result;
+}
 
+/** ペアのリストをコートに2ペアずつ割り当てる全パターンを生成 */
+function courtGroupingsOfPairs(
+  pairs: [string, string][],
+  courtCount: number,
+): [[string, string], [string, string]][][] {
+  if (courtCount === 0) return [[]];
+  const [first, ...rest] = pairs;
+  const result: [[string, string], [string, string]][][] = [];
+  for (let i = 0; i < rest.length; i++) {
+    const second = rest[i];
+    const remaining = rest.filter((_, j) => j !== i);
+    for (const sub of courtGroupingsOfPairs(remaining, courtCount - 1)) {
+      result.push([[first, second], ...sub]);
+    }
+  }
+  return result;
+}
+
+const PAIR_WEIGHT = 3;
+const CONSECUTIVE_PAIR_PENALTY = 50;
+const CONSECUTIVE_OPPONENT_PENALTY = 20;
+
+/** 直前ラウンドのペアキーセット */
+function getPrevPairKeys(prevRound: Round | null): Set<string> {
+  if (!prevRound) return new Set();
+  const keys = new Set<string>();
+  for (const court of prevRound.courts) {
+    if (court.teamA.length === 2) keys.add([...court.teamA].sort().join(':'));
+    if (court.teamB.length === 2) keys.add([...court.teamB].sort().join(':'));
+  }
+  return keys;
+}
+
+/** 直前ラウンドの対戦キーセット */
+function getPrevOpponentKeys(prevRound: Round | null): Set<string> {
+  if (!prevRound) return new Set();
+  const keys = new Set<string>();
+  for (const court of prevRound.courts) {
+    for (const a of court.teamA) {
+      for (const b of court.teamB) {
+        keys.add([a, b].sort().join(':'));
+      }
+    }
+  }
+  return keys;
+}
+
+/** ペアマッチング全体のスコア（pairHistory × PAIR_WEIGHT + 連続ペアペナルティ） */
+function scorePairMatching(
+  matching: [string, string][],
+  users: User[],
+  prevPairKeys: Set<string>,
+): number {
+  let score = 0;
+  for (const [a, b] of matching) {
+    const ua = users.find((u) => u.id === a)!;
+    const ub = users.find((u) => u.id === b)!;
+    score += ((ua.pairHistory[b] ?? 0) + (ub.pairHistory[a] ?? 0)) * PAIR_WEIGHT;
+    if (prevPairKeys.has([a, b].sort().join(':'))) score += CONSECUTIVE_PAIR_PENALTY;
+  }
   return score;
 }
 
-/** コート内4人を最適な2vs2に分割 */
-function bestSplit(players: string[], users: User[]): { teamA: string[]; teamB: string[] } {
-  const splits = combinations(players, 2).map((teamA) => {
-    const teamB = players.filter((p) => !teamA.includes(p));
-    return { teamA, teamB, score: pairScore(teamA, teamB, users) };
-  });
+/**
+ * ペアマッチングのタイブレーカースコア
+ * ペアスコアが同点のとき、潜在パートナー同士の対戦履歴が少ない組み合わせを優先する
+ */
+function opponentTiebreakerScore(
+  matching: [string, string][],
+  users: User[],
+  prevOpponentKeys: Set<string>,
+): number {
+  let score = 0;
+  for (const [a, b] of matching) {
+    const ua = users.find((u) => u.id === a)!;
+    const ub = users.find((u) => u.id === b)!;
+    score += (ua.opponentHistory[b] ?? 0) + (ub.opponentHistory[a] ?? 0);
+    if (prevOpponentKeys.has([a, b].sort().join(':'))) score += CONSECUTIVE_OPPONENT_PENALTY;
+  }
+  return score;
+}
 
-  const minScore = Math.min(...splits.map((s) => s.score));
-  const best = splits.filter((s) => s.score === minScore);
-  const chosen = best[Math.floor(Math.random() * best.length)];
-  return { teamA: chosen.teamA, teamB: chosen.teamB };
+/** コート1面分の対戦スコア（opponentHistory + 連続対戦ペナルティ） */
+function scoreOpponents(
+  teamA: string[],
+  teamB: string[],
+  users: User[],
+  prevOpponentKeys: Set<string>,
+): number {
+  let score = 0;
+  for (const a of teamA) {
+    for (const b of teamB) {
+      const ua = users.find((u) => u.id === a)!;
+      const ub = users.find((u) => u.id === b)!;
+      score += (ua.opponentHistory[b] ?? 0) + (ub.opponentHistory[a] ?? 0);
+      if (prevOpponentKeys.has([a, b].sort().join(':'))) score += CONSECUTIVE_OPPONENT_PENALTY;
+    }
+  }
+  return score;
 }
 
 /**
@@ -64,42 +131,41 @@ function bestSplit(players: string[], users: User[]): { teamA: string[]; teamB: 
  * @param participants 現在の参加者
  * @param courtCount コート数
  * @param gameFormat シングルス or ダブルス
- * @param prevRestingIds 直前ラウンドで休憩した人のID
+ * @param prevRound 直前のラウンド（初回はnull）
+ * @param roundIndex ラウンドインデックス
  */
 export function generateRound(
   participants: User[],
   courtCount: number,
   gameFormat: GameFormat,
-  prevRestingIds: string[],
+  prevRound: Round | null,
   roundIndex: number,
 ): Round {
   const playersPerCourt = gameFormat === 'doubles' ? 4 : 2;
   const totalPlaying = courtCount * playersPerCourt;
   const restCount = Math.max(0, participants.length - totalPlaying);
+  const prevRestingIds = prevRound?.restingPlayerIds ?? [];
+  const prevPairKeys = getPrevPairKeys(prevRound);
+  const prevOpponentKeys = getPrevOpponentKeys(prevRound);
 
   // --- Step1: 休憩者の選定 ---
   let restingPlayers: User[] = [];
 
   if (restCount > 0) {
-    // 休憩回数でソート（少ない順）、同回数なら直前休憩者を後回し
     const sorted = [...participants].sort((a, b) => {
       if (a.totalRestCount !== b.totalRestCount) return a.totalRestCount - b.totalRestCount;
       const aRested = prevRestingIds.includes(a.id) ? 1 : 0;
       const bRested = prevRestingIds.includes(b.id) ? 1 : 0;
-      return aRested - bRested; // 直前休憩者を後ろに
+      return aRested - bRested;
     });
 
-    // 同条件グループ内はランダム
     const minRest = sorted[0].totalRestCount;
-    const minGroup = sorted.filter(
-      (u) => u.totalRestCount === minRest && !prevRestingIds.includes(u.id)
-    );
+    const minGroup = sorted.filter((u) => u.totalRestCount === minRest && !prevRestingIds.includes(u.id));
     const fallback = sorted.filter((u) => u.totalRestCount === minRest && prevRestingIds.includes(u.id));
     const candidates = minGroup.length > 0 ? minGroup : fallback;
 
     restingPlayers = shuffle(candidates).slice(0, restCount);
 
-    // 必要数に満たない場合（同回数グループが小さい場合）残りを補充
     if (restingPlayers.length < restCount) {
       const remaining = sorted
         .filter((u) => !restingPlayers.includes(u))
@@ -109,47 +175,69 @@ export function generateRound(
   }
 
   const restingIds = restingPlayers.map((u) => u.id);
-  const playing = participants.filter((u) => !restingIds.includes(u.id));
+  const playing = participants.filter((u) => !restingIds.includes(u.id)).map((u) => u.id);
 
-  // --- Step2 & 3: コート割り当て & ペア決め ---
-  // コートへの割り当てはシャッフルベースでスコア最小を選ぶ
-  const TRIALS = 20;
-  let bestCourts: Court[] | null = null;
-  let bestScore = Infinity;
+  // --- Step2 & 3: コート割り当て ---
+  let courts: Court[];
 
-  for (let t = 0; t < TRIALS; t++) {
-    const shuffled = shuffle(playing);
-    const courts: Court[] = [];
-    let trialScore = 0;
+  if (gameFormat === 'doubles') {
+    // Step2: 全完全マッチングを列挙し、ペアスコアが最小のものを選ぶ
+    // 同点の場合は対戦履歴をタイブレーカーとして使用（逆転なし）
+    const allMatchings = perfectMatchings(playing);
+    const minPairScore = Math.min(...allMatchings.map((m) => scorePairMatching(m, participants, prevPairKeys)));
+    const pairTiedMatchings = allMatchings.filter((m) => scorePairMatching(m, participants, prevPairKeys) === minPairScore);
+    const minTiebreaker = Math.min(...pairTiedMatchings.map((m) => opponentTiebreakerScore(m, participants, prevOpponentKeys)));
+    const bestMatchings = pairTiedMatchings.filter((m) => opponentTiebreakerScore(m, participants, prevOpponentKeys) === minTiebreaker);
+    const chosenMatching = bestMatchings[Math.floor(Math.random() * bestMatchings.length)];
 
-    for (let i = 0; i < courtCount; i++) {
-      const group = shuffled.slice(i * playersPerCourt, (i + 1) * playersPerCourt);
-      const ids = group.map((u) => u.id);
+    // Step3: ペアをコートに割り当て、対戦スコアが最小の組み合わせを選ぶ
+    const allGroupings = courtGroupingsOfPairs(chosenMatching, courtCount);
+    const minOpponentScore = Math.min(
+      ...allGroupings.map((g) =>
+        g.reduce((sum, [pA, pB]) => sum + scoreOpponents([...pA], [...pB], participants, prevOpponentKeys), 0)
+      )
+    );
+    const bestGroupings = allGroupings.filter(
+      (g) =>
+        g.reduce((sum, [pA, pB]) => sum + scoreOpponents([...pA], [...pB], participants, prevOpponentKeys), 0) ===
+        minOpponentScore
+    );
+    const chosenGrouping = bestGroupings[Math.floor(Math.random() * bestGroupings.length)];
 
-      if (gameFormat === 'doubles') {
-        const { teamA, teamB } = bestSplit(ids, participants);
-        const score = pairScore(teamA, teamB, participants);
-        trialScore += score;
-        courts.push({ courtNumber: i + 1, teamA, teamB });
-      } else {
-        // シングルス
-        const score =
-          (participants.find((u) => u.id === ids[0])?.opponentHistory[ids[1]] ?? 0) +
-          (participants.find((u) => u.id === ids[1])?.opponentHistory[ids[0]] ?? 0);
-        trialScore += score;
-        courts.push({ courtNumber: i + 1, teamA: [ids[0]], teamB: [ids[1]] });
-      }
-    }
+    // コート番号はシャッフルして偏りを防ぐ
+    const courtNumbers = shuffle([...Array(courtCount)].map((_, i) => i + 1));
+    courts = chosenGrouping.map(([pairA, pairB], i) => ({
+      courtNumber: courtNumbers[i],
+      teamA: [...pairA],
+      teamB: [...pairB],
+    }));
+    courts.sort((a, b) => a.courtNumber - b.courtNumber);
+  } else {
+    // シングルス: 対戦ペアの完全マッチングを全列挙してスコア最小を選ぶ
+    const allMatchings = perfectMatchings(playing);
+    const minScore = Math.min(
+      ...allMatchings.map((m) =>
+        m.reduce((sum, [a, b]) => sum + scoreOpponents([a], [b], participants, prevOpponentKeys), 0)
+      )
+    );
+    const bestMatchings = allMatchings.filter(
+      (m) =>
+        m.reduce((sum, [a, b]) => sum + scoreOpponents([a], [b], participants, prevOpponentKeys), 0) === minScore
+    );
+    const chosenMatching = bestMatchings[Math.floor(Math.random() * bestMatchings.length)];
 
-    if (trialScore < bestScore) {
-      bestScore = trialScore;
-      bestCourts = courts;
-    }
+    const courtNumbers = shuffle([...Array(courtCount)].map((_, i) => i + 1));
+    courts = chosenMatching.map(([a, b], i) => ({
+      courtNumber: courtNumbers[i],
+      teamA: [a],
+      teamB: [b],
+    }));
+    courts.sort((a, b) => a.courtNumber - b.courtNumber);
   }
 
   return {
     index: roundIndex,
-    courts: bestCourts!,
+    courts,
     restingPlayerIds: restingIds,
   };
 }
@@ -160,9 +248,7 @@ export function generateRound(
 export function applyRoundToUsers(round: Round, users: User[]): User[] {
   return users.map((user) => {
     const isResting = round.restingPlayerIds.includes(user.id);
-    const court = round.courts.find(
-      (c) => [...c.teamA, ...c.teamB].includes(user.id)
-    );
+    const court = round.courts.find((c) => [...c.teamA, ...c.teamB].includes(user.id));
 
     if (isResting) {
       return { ...user, totalRestCount: user.totalRestCount + 1 };
@@ -174,13 +260,11 @@ export function applyRoundToUsers(round: Round, users: User[]): User[] {
     const myTeam = inTeamA ? court.teamA : court.teamB;
     const opponents = inTeamA ? court.teamB : court.teamA;
 
-    // ペア履歴を更新
     const newPairHistory = { ...user.pairHistory };
     for (const partnerId of myTeam.filter((id) => id !== user.id)) {
       newPairHistory[partnerId] = (newPairHistory[partnerId] ?? 0) + 1;
     }
 
-    // 対戦履歴を更新
     const newOpponentHistory = { ...user.opponentHistory };
     for (const opponentId of opponents) {
       newOpponentHistory[opponentId] = (newOpponentHistory[opponentId] ?? 0) + 1;

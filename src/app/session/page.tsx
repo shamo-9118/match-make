@@ -25,7 +25,7 @@ export default function SessionPage() {
   const scheduleNextRound = (afterRound: Round, updatedUsers: User[], participantIds: string[]) => {
     const participants = updatedUsers.filter((u) => participantIds.includes(u.id));
     setTimeout(() => {
-      const next = generateRound(participants, session!.courtCount, session!.gameFormat, afterRound.restingPlayerIds, afterRound.index + 1);
+      const next = generateRound(participants, session!.courtCount, session!.gameFormat, afterRound, afterRound.index + 1);
       setNextRound(next);
     }, 0);
   };

@@ -36,7 +36,7 @@ export default function SetupPage() {
     const participantIds = [...selectedIds];
     startSession(courtCount, gameFormat, participantIds);
     const participants = users.filter((u) => participantIds.includes(u.id));
-    const firstRound = generateRound(participants, courtCount, gameFormat, [], 0);
+    const firstRound = generateRound(participants, courtCount, gameFormat, null, 0);
     setNextRound(firstRound);
     router.push('/session');
   };
