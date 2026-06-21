@@ -12,6 +12,7 @@ import { useUserStore } from '@/store/userStore';
 import { generateRound, applyRoundToUsers, revertRoundFromUsers, initLateJoiner } from '@/utils/algorithm';
 import { Court, Round, User } from '@/types';
 import { USER_COLORS } from '@/utils/colors';
+import { IconCoffee } from '@tabler/icons-react';
 
 export default function SessionPage() {
   const router = useRouter();
@@ -203,7 +204,10 @@ export default function SessionPage() {
 
               {currentRound.restingPlayerIds.length > 0 && (
                 <Card withBorder radius="md" padding="md">
-                  <Text fw={600} c="dimmed" mb="sm">休憩</Text>
+                  <Group gap={4} mb="sm">
+                    <IconCoffee size={16} color="var(--mantine-color-dimmed)" />
+                    <Text fw={600} c="dimmed">休憩</Text>
+                  </Group>
                   <Group>
                     {currentRound.restingPlayerIds.map((id) => {
                       const u = users.find((u) => u.id === id);
@@ -214,10 +218,10 @@ export default function SessionPage() {
                           style={{ cursor: currentSwapMode ? 'pointer' : 'pointer', outline: isSelected ? '2px solid var(--mantine-color-orange-5)' : 'none', borderRadius: 8 }}
                           onClick={() => currentSwapMode ? handleCurrentSwapClick(id) : u && openEditUser(u)}
                         >
-                          <Avatar src={u?.imagePath} size={44} radius="xl" color={u?.color ?? 'gray'}>
+                          <Avatar src={u?.imagePath} size={80} radius="xl" color={u?.color ?? 'gray'}>
                             {u?.name[0] ?? '?'}
                           </Avatar>
-                          <Text size="xs" c="dimmed">{u?.name ?? id}</Text>
+                          <Text size="lg" fw={700} c="dimmed">{u?.name ?? id}</Text>
                         </Stack>
                       );
                     })}
