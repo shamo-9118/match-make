@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Flex, Title, Button, Stack, Text, Modal, Avatar, Group, Card } from '@mantine/core';
+import { Flex, Title, Button, Stack, Text, Modal, Avatar, Group, Card, Image } from '@mantine/core';
+import { IconSwords, IconUsers } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/userStore';
 import { generateId } from '@/utils/id';
@@ -41,15 +42,16 @@ export default function HomePage() {
     <>
       <Flex h="100vh" direction="column" align="center" justify="center" gap="xl">
         <Stack align="center" gap="xs">
-          <Title order={1}>match-make 🏓</Title>
-          <Text c="dimmed">ピックルボール コート割り振りアプリ</Text>
+          <Image src="/app-icon.png" w={120} h={120} radius="xl" />
+          <Title order={1}>match-make</Title>
+          <Text c="dimmed">コートスポーツのメンバー割り振りをお任せ！</Text>
         </Stack>
 
         <Stack w={280} gap="md">
-          <Button size="xl" color="green" onClick={() => router.push('/setup')}>
+          <Button size="xl" color="green" leftSection={<IconSwords size={24} />} onClick={() => router.push('/setup')}>
             ゲーム
           </Button>
-          <Button size="xl" variant="light" onClick={() => router.push('/users')}>
+          <Button size="xl" variant="light" leftSection={<IconUsers size={24} />} onClick={() => router.push('/users')}>
             ユーザー管理
           </Button>
         </Stack>
