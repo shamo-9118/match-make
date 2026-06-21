@@ -115,7 +115,7 @@ export default function SessionPage() {
                       const u = users.find((u) => u.id === id);
                       return (
                         <Stack key={id} align="center" gap={4}>
-                          <Avatar src={u?.imagePath} size={44} radius="xl" color="gray">
+                          <Avatar src={u?.imagePath} size={44} radius="xl" color={u?.color ?? 'gray'}>
                             {u?.name[0] ?? '?'}
                           </Avatar>
                           <Text size="xs" c="dimmed">{u?.name ?? id}</Text>
@@ -170,7 +170,7 @@ export default function SessionPage() {
                 style={{ cursor: 'pointer', borderColor: isIn ? 'var(--mantine-color-blue-5)' : undefined, borderWidth: isIn ? 2 : 1 }}
               >
                 <Flex align="center" gap="sm">
-                  <Avatar src={user.imagePath} size={40} radius="xl" color="blue">{user.name[0]}</Avatar>
+                  <Avatar src={user.imagePath} size={40} radius="xl" color={user.color}>{user.name[0]}</Avatar>
                   <Text flex={1} fw={500}>{user.name}</Text>
                   <Badge color={isIn ? 'blue' : 'gray'}>{isIn ? '参加中' : '不参加'}</Badge>
                 </Flex>
@@ -195,7 +195,7 @@ function CourtCard({ court, users }: { court: Court; users: User[] }) {
         <Avatar
           src={u?.imagePath} size={64} radius="xl"
           style={{ border: '3px solid white' }}
-          color="blue"
+          color={u?.color ?? 'blue'}
         >
           {u?.name[0] ?? '?'}
         </Avatar>

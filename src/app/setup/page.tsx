@@ -111,7 +111,7 @@ export default function SetupPage() {
                       }}
                     >
                       <Flex align="center" gap="sm">
-                        <Avatar src={user.imagePath} size={40} radius="xl" color="blue">
+                        <Avatar src={user.imagePath} size={40} radius="xl" color={user.color}>
                           {user.name[0]}
                         </Avatar>
                         <Text fw={500} size="sm" flex={1}>{user.name}</Text>

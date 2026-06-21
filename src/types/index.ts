@@ -4,6 +4,7 @@ export interface User {
   id: string;
   name: string;
   imagePath?: string;
+  color: string; // アバターカラー（写真未設定時に使用）
   // セッション内カウント（練習終了でリセット）
   totalPlayCount: number;
   totalRestCount: number;

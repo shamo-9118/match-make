@@ -2,10 +2,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User } from '@/types';
+import { pickColor } from '@/utils/colors';
 
 interface UserStore {
   users: User[];
-  addUser: (user: Omit<User, 'totalPlayCount' | 'totalRestCount' | 'pairHistory' | 'opponentHistory'>) => void;
+  addUser: (user: Omit<User, 'color' | 'totalPlayCount' | 'totalRestCount' | 'pairHistory' | 'opponentHistory'>) => void;
   updateUser: (id: string, updates: Partial<Pick<User, 'name' | 'imagePath'>>) => void;
   deleteUser: (id: string) => void;
   updateUserStats: (updatedUsers: User[]) => void;
@@ -20,6 +21,7 @@ export const useUserStore = create<UserStore>()(
       addUser: (user) => {
         const newUser: User = {
           ...user,
+          color: pickColor(get().users),
           totalPlayCount: 0,
           totalRestCount: 0,
           pairHistory: {},
@@ -57,6 +59,20 @@ export const useUserStore = create<UserStore>()(
         });
       },
     }),
-    { name: 'match-make:users' }
+    {
+      name: 'match-make:users',
+      version: 1,
+      migrate: (persistedState: unknown) => {
+        const state = persistedState as { users: User[] };
+        const migratedUsers: User[] = [];
+        for (const u of state.users) {
+          migratedUsers.push({
+            ...u,
+            color: u.color ?? pickColor(migratedUsers),
+          });
+        }
+        return { ...state, users: migratedUsers };
+      },
+    }
   )
 );

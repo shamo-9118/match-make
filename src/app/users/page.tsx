@@ -77,7 +77,7 @@ export default function UsersPage() {
                     setUploadingId(user.id);
                     fileInputRef.current?.click();
                   }}>
-                    <Avatar src={user.imagePath} size={52} radius="xl" color="blue">
+                    <Avatar src={user.imagePath} size={52} radius="xl" color={user.color}>
                       {user.name[0]}
                     </Avatar>
                     <Text size="xs" c="dimmed">写真</Text>
