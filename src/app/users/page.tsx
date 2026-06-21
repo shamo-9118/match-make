@@ -49,7 +49,7 @@ export default function UsersPage() {
           <Button variant="subtle" onClick={() => router.push('/')}>← トップ</Button>
           <Title order={3}>ユーザー管理</Title>
           <Button color="red" variant="light" onClick={openReset}>
-            練習終了
+            統計リセット
           </Button>
         </Flex>
       </AppShell.Header>
@@ -139,7 +139,7 @@ export default function UsersPage() {
         }}
       />
 
-      <Modal opened={resetOpened} onClose={closeReset} title="練習終了" centered>
+      <Modal opened={resetOpened} onClose={closeReset} title="統計リセット" centered>
         <Text>参加回数・対戦履歴をリセットしますか？</Text>
         <Group mt="md" justify="flex-end">
           <Button variant="default" onClick={closeReset}>キャンセル</Button>
