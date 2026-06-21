@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import {
   AppShell, Button, Group, Stack, Avatar, Text, Card,
-  Flex, Badge, Modal, SimpleGrid, Paper, Divider, Collapse,
+  Flex, Badge, Modal, SimpleGrid, Paper, Divider,
   TextInput, Popover, ColorSwatch,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
@@ -167,11 +167,11 @@ export default function SessionPage() {
                 }
                 labelPosition="left"
               />
-              <Collapse opened={previewOpened}>
+              {previewOpened && (
                 <Stack gap="sm" style={{ opacity: 0.5 }}>
                   <SimpleGrid cols={{ base: 1, md: session.courtCount > 1 ? 2 : 1 }} spacing="md">
                     {session.nextRound.courts.map((court) => (
-                      <CourtCard key={court.courtNumber} court={court} users={users} />
+                      <CourtCard key={court.courtNumber} court={court} users={users} onPlayerClick={openEditUser} />
                     ))}
                   </SimpleGrid>
                   {session.nextRound.restingPlayerIds.length > 0 && (
@@ -193,7 +193,7 @@ export default function SessionPage() {
                     </Card>
                   )}
                 </Stack>
-              </Collapse>
+              )}
             </Stack>
           )}
         </Stack>
