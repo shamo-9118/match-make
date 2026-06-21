@@ -1,5 +1,6 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import jsQR from 'jsqr';
 import {
   AppShell, Title, TextInput, Button, Group, Stack, Avatar,
   Text, ActionIcon, Card, Badge, Flex, Modal, Popover, ColorSwatch, SimpleGrid, Checkbox,
@@ -24,6 +25,96 @@ export default function UsersPage() {
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+
+  // QRスキャナー
+  const [scanOpened, setScanOpened] = useState(false);
+  const [importUsers, setImportUsers] = useState<{ name: string; color: string }[]>([]);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const stopCamera = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  }, []);
+
+  const parseQrData = useCallback((data: string) => {
+    try {
+      const url = new URL(data);
+      const raw = url.searchParams.get('import');
+      if (!raw) throw new Error();
+      const parsed = JSON.parse(decodeURIComponent(atob(raw)));
+      if (!Array.isArray(parsed) || parsed.length === 0) throw new Error();
+      setImportUsers(parsed);
+    } catch {
+      setScanError('QRコードを認識できませんでした');
+    }
+  }, []);
+
+  const scanFrame = useCallback(() => {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!video || !canvas) return;
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+      rafRef.current = requestAnimationFrame(scanFrame);
+      return;
+    }
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d')!;
+    ctx.drawImage(video, 0, 0);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+    if (code) {
+      stopCamera();
+      parseQrData(code.data);
+    } else {
+      rafRef.current = requestAnimationFrame(scanFrame);
+    }
+  }, [stopCamera, parseQrData]);
+
+  const openScanner = async () => {
+    setImportUsers([]);
+    setScanError(null);
+    setScanOpened(true);
+  };
+
+  useEffect(() => {
+    if (!scanOpened || importUsers.length > 0 || scanError) return;
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+          rafRef.current = requestAnimationFrame(scanFrame);
+        }
+      } catch {
+        setScanError('カメラへのアクセスが許可されていません');
+      }
+    })();
+    return () => stopCamera();
+  }, [scanOpened, importUsers.length, scanError, scanFrame, stopCamera]);
+
+  const handleScanClose = () => {
+    stopCamera();
+    setScanOpened(false);
+    setImportUsers([]);
+    setScanError(null);
+  };
+
+  const handleImport = () => {
+    importUsers.forEach((u) => {
+      const id = generateId();
+      addUser({ id, name: u.name });
+      updateUser(id, { color: u.color });
+    });
+    handleScanClose();
+  };
 
   const toggleShareUser = (id: string) => {
     setSelectedShareIds((prev) => {
@@ -76,6 +167,7 @@ export default function UsersPage() {
           <Button variant="subtle" onClick={() => router.push('/')}>← トップ</Button>
           <Title order={3}>ユーザー管理</Title>
           <Group gap="xs">
+            <Button variant="light" onClick={openScanner}>インポート</Button>
             <Button variant="light" onClick={openShare}>共有</Button>
             <Button color="red" variant="light" onClick={openReset}>統計リセット</Button>
           </Group>
@@ -227,6 +319,39 @@ export default function UsersPage() {
             <Button disabled={selectedShareIds.size === 0} onClick={generateQr} mt="xs">
               QRコードを生成
             </Button>
+          </Stack>
+        )}
+      </Modal>
+
+      <Modal opened={scanOpened} onClose={handleScanClose} title="QRコードをスキャン" centered size="sm">
+        {scanError ? (
+          <Stack align="center" gap="md">
+            <Text c="red">{scanError}</Text>
+            <Button variant="light" onClick={handleScanClose}>閉じる</Button>
+          </Stack>
+        ) : importUsers.length > 0 ? (
+          <Stack gap="sm">
+            <Text size="sm" c="dimmed">以下のユーザーを追加しますか？</Text>
+            {importUsers.map((u, i) => (
+              <Card key={i} withBorder radius="md" padding="sm">
+                <Flex align="center" gap="sm">
+                  <Avatar size={36} radius="xl" color={u.color}>{u.name[0]}</Avatar>
+                  <Text fw={500}>{u.name}</Text>
+                </Flex>
+              </Card>
+            ))}
+            <Group justify="flex-end" mt="xs">
+              <Button variant="default" onClick={handleScanClose}>キャンセル</Button>
+              <Button onClick={handleImport}>追加する</Button>
+            </Group>
+          </Stack>
+        ) : (
+          <Stack align="center" gap="sm">
+            <Text size="sm" c="dimmed">QRコードにカメラを向けてください</Text>
+            <div style={{ position: 'relative', width: '100%', maxWidth: 320, aspectRatio: '1', background: '#000', borderRadius: 8, overflow: 'hidden' }}>
+              <video ref={videoRef} style={{ width: '100%', height: '100%', objectFit: 'cover' }} muted playsInline />
+            </div>
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
           </Stack>
         )}
       </Modal>
