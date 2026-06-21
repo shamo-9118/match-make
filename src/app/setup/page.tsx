@@ -45,7 +45,7 @@ export default function SetupPage() {
     <AppShell header={{ height: 60 }} padding="md">
       <AppShell.Header>
         <Flex h="100%" px="md" align="center" justify="space-between">
-          <Title order={3}>match-make 🏓</Title>
+          <Title order={3}>match make</Title>
           <Button variant="subtle" onClick={() => router.push('/')}>← トップ</Button>
         </Flex>
       </AppShell.Header>
