@@ -460,19 +460,19 @@ function CourtCard({ court, users, onPlayerClick, selectedId }: { court: Court; 
     );
   };
 
-  const PlayerRow = ({ id }: { id: string }) => {
+  const PlayerMobile = ({ id }: { id: string }) => {
     const u = getUser(id);
     const isSelected = selectedId === id;
     return (
-      <Flex align="center" gap="sm" style={{ cursor: 'pointer' }} onClick={() => u && onPlayerClick(u)}>
+      <Flex align="center" gap="xs" style={{ cursor: 'pointer', overflow: 'hidden' }} onClick={() => u && onPlayerClick(u)}>
         <Avatar
-          src={u?.imagePath} size={48} radius="xl"
-          style={{ boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
+          src={u?.imagePath} size={40} radius="xl"
+          style={{ boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none', flexShrink: 0 }}
           color={u?.color ?? 'blue'}
         >
           {u?.name[0] ?? '?'}
         </Avatar>
-        <Text size="lg" fw={700} c="white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
+        <Text size="sm" fw={700} c="white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {u?.name ?? id}
         </Text>
       </Flex>
@@ -486,15 +486,19 @@ function CourtCard({ court, users, onPlayerClick, selectedId }: { court: Court; 
         <Text c="white" fw={700}>コート {court.courtNumber}</Text>
       </Flex>
 
-      {/* モバイルレイアウト */}
-      <Stack bg={COURT_GREEN} p="lg" gap="xs" hiddenFrom="sm">
-        {court.teamA.map((id) => <PlayerRow key={id} id={id} />)}
-        <Flex align="center" gap="sm" my={4}>
-          <Paper flex={1} h={2} bg="rgba(255,255,255,0.5)" radius="sm" />
-          <Text c="white" fw={900} size="md">VS</Text>
-          <Paper flex={1} h={2} bg="rgba(255,255,255,0.5)" radius="sm" />
+      {/* モバイルレイアウト: 各チームを横並びに */}
+      <Stack bg={COURT_GREEN} px="md" py="sm" gap="xs" hiddenFrom="sm">
+        <SimpleGrid cols={court.teamA.length} spacing="xs">
+          {court.teamA.map((id) => <PlayerMobile key={id} id={id} />)}
+        </SimpleGrid>
+        <Flex align="center" gap="sm" my={2}>
+          <Paper flex={1} h={2} bg="rgba(255,255,255,0.4)" radius="sm" />
+          <Text c="white" fw={900} size="sm">VS</Text>
+          <Paper flex={1} h={2} bg="rgba(255,255,255,0.4)" radius="sm" />
         </Flex>
-        {court.teamB.map((id) => <PlayerRow key={id} id={id} />)}
+        <SimpleGrid cols={court.teamB.length} spacing="xs">
+          {court.teamB.map((id) => <PlayerMobile key={id} id={id} />)}
+        </SimpleGrid>
       </Stack>
 
       {/* デスクトップレイアウト */}
