@@ -3,11 +3,11 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import jsQR from 'jsqr';
 import {
   AppShell, Title, TextInput, Button, Group, Stack, Avatar,
-  Text, ActionIcon, Card, Badge, Flex, Modal, Popover, ColorSwatch, SimpleGrid, Checkbox,
+  Text, ActionIcon, Card, Badge, Flex, Modal, ColorSwatch, SimpleGrid, Checkbox,
   Burger, Drawer,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconPlus, IconTrash, IconPencil, IconCheck, IconX } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconPencil } from '@tabler/icons-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/userStore';
@@ -18,8 +18,9 @@ export default function UsersPage() {
   const router = useRouter();
   const { users, addUser, updateUser, deleteUser, resetAllStats } = useUserStore();
   const [name, setName] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
+  const [editModalUser, setEditModalUser] = useState<{ id: string; name: string; color: string } | null>(null);
+  const [editModalName, setEditModalName] = useState('');
+  const [editModalColor, setEditModalColor] = useState('');
   const [resetOpened, { open: openReset, close: closeReset }] = useDisclosure(false);
   const [deletingUser, setDeletingUser] = useState<{ id: string; name: string } | null>(null);
   const [shareOpened, { open: openShare, close: closeShare }] = useDisclosure(false);
@@ -153,9 +154,17 @@ export default function UsersPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleEditSave = (id: string) => {
-    if (editName.trim()) updateUser(id, { name: editName.trim() });
-    setEditingId(null);
+  const openEditModal = (user: { id: string; name: string; color: string }) => {
+    setEditModalUser(user);
+    setEditModalName(user.name);
+    setEditModalColor(user.color);
+  };
+
+  const handleEditSave = () => {
+    if (!editModalUser) return;
+    if (editModalName.trim()) updateUser(editModalUser.id, { name: editModalName.trim() });
+    updateUser(editModalUser.id, { color: editModalColor });
+    setEditModalUser(null);
   };
 
   const handleReset = () => {
@@ -166,9 +175,9 @@ export default function UsersPage() {
   return (
     <AppShell header={{ height: 60 }} padding="md">
       <AppShell.Header>
-        <Flex h="100%" px="md" align="center" justify="space-between">
+        <Flex h="100%" px="md" align="center" justify="space-between" style={{ position: 'relative' }}>
           <Button variant="subtle" size="sm" onClick={() => router.push('/')}>← トップ</Button>
-          <Title order={4}>ユーザー管理</Title>
+          <Title order={4} style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>ユーザー管理</Title>
 
           {/* デスクトップ */}
           <Group gap="xs" visibleFrom="sm">
@@ -201,72 +210,28 @@ export default function UsersPage() {
             {users.map((user) => (
               <Card key={user.id} withBorder padding="sm" radius="md">
                 <Flex align="center" gap="md">
-                  <Stack gap={2} align="center">
-                    <Avatar
-                      src={user.imagePath} size={52} radius="xl" color={user.color}
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => { setUploadingId(user.id); fileInputRef.current?.click(); }}
-                    >
-                      {user.name[0]}
-                    </Avatar>
-                    <Popover position="bottom" withArrow shadow="md">
-                      <Popover.Target>
-                        <ColorSwatch
-                          color={`var(--mantine-color-${user.color}-5)`}
-                          size={14}
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </Popover.Target>
-                      <Popover.Dropdown>
-                        <SimpleGrid cols={6} spacing={6}>
-                          {USER_COLORS.map((c) => (
-                            <ColorSwatch
-                              key={c}
-                              color={`var(--mantine-color-${c}-5)`}
-                              size={24}
-                              style={{ cursor: 'pointer', outline: user.color === c ? '2px solid var(--mantine-color-dark-5)' : 'none', outlineOffset: 2 }}
-                              onClick={() => updateUser(user.id, { color: c })}
-                            />
-                          ))}
-                        </SimpleGrid>
-                      </Popover.Dropdown>
-                    </Popover>
-                  </Stack>
-
-                  {editingId === user.id ? (
-                    <TextInput
-                      flex={1}
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleEditSave(user.id)}
-                      autoFocus
-                    />
-                  ) : (
-                    <Text flex={1} fw={500} size="lg">{user.name}</Text>
-                  )}
-
-                  <Badge variant="light" color="blue">{user.totalPlayCount}試合</Badge>
-                  <Badge variant="light" color="gray">{user.totalRestCount}休</Badge>
-
-                  {editingId === user.id ? (
+                  <Avatar
+                    src={user.imagePath} size={52} radius="xl" color={user.color}
+                    style={{ cursor: 'pointer', flexShrink: 0 }}
+                    onClick={() => { setUploadingId(user.id); fileInputRef.current?.click(); }}
+                  >
+                    {user.name[0]}
+                  </Avatar>
+                  <Text flex={1} fw={500} size="lg">{user.name}</Text>
+                  <Stack gap={4} align="flex-end">
                     <Group gap="xs">
-                      <ActionIcon color="green" onClick={() => handleEditSave(user.id)}>
-                        <IconCheck size={16} />
-                      </ActionIcon>
-                      <ActionIcon color="gray" onClick={() => setEditingId(null)}>
-                        <IconX size={16} />
-                      </ActionIcon>
+                      <Badge variant="light" color="blue">{user.totalPlayCount}試合</Badge>
+                      <Badge variant="light" color="gray">{user.totalRestCount}休</Badge>
                     </Group>
-                  ) : (
                     <Group gap="xs">
-                      <ActionIcon variant="light" onClick={() => { setEditingId(user.id); setEditName(user.name); }}>
+                      <ActionIcon variant="light" onClick={() => openEditModal(user)}>
                         <IconPencil size={16} />
                       </ActionIcon>
                       <ActionIcon variant="light" color="red" onClick={() => setDeletingUser({ id: user.id, name: user.name })}>
                         <IconTrash size={16} />
                       </ActionIcon>
                     </Group>
-                  )}
+                  </Stack>
                 </Flex>
               </Card>
             ))}
@@ -370,6 +335,36 @@ export default function UsersPage() {
             <canvas ref={canvasRef} style={{ display: 'none' }} />
           </Stack>
         )}
+      </Modal>
+
+      <Modal opened={!!editModalUser} onClose={() => setEditModalUser(null)} title="ユーザーを編集" centered size="sm">
+        <Stack gap="md">
+          <TextInput
+            label="名前"
+            value={editModalName}
+            onChange={(e) => setEditModalName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleEditSave()}
+            autoFocus
+          />
+          <Stack gap="xs">
+            <Text size="sm" fw={500}>カラー</Text>
+            <SimpleGrid cols={6} spacing={8}>
+              {USER_COLORS.map((c) => (
+                <ColorSwatch
+                  key={c}
+                  color={`var(--mantine-color-${c}-5)`}
+                  size={28}
+                  style={{ cursor: 'pointer', outline: editModalColor === c ? '2px solid var(--mantine-color-dark-5)' : 'none', outlineOffset: 2 }}
+                  onClick={() => setEditModalColor(c)}
+                />
+              ))}
+            </SimpleGrid>
+          </Stack>
+          <Group justify="flex-end">
+            <Button variant="default" onClick={() => setEditModalUser(null)}>キャンセル</Button>
+            <Button onClick={handleEditSave}>保存</Button>
+          </Group>
+        </Stack>
       </Modal>
 
       <Modal opened={!!deletingUser} onClose={() => setDeletingUser(null)} title="ユーザーを削除" centered>
