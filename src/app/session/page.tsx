@@ -472,7 +472,7 @@ function CourtCard({ court, users, onPlayerClick, selectedId }: { court: Court; 
         >
           {u?.name[0] ?? '?'}
         </Avatar>
-        <Text size="sm" fw={700} c="white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <Text size="md" fw={700} c="white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {u?.name ?? id}
         </Text>
       </Flex>
