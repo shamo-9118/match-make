@@ -176,18 +176,18 @@ export default function UsersPage() {
     <AppShell header={{ height: 60 }} padding="md">
       <AppShell.Header>
         <Flex h="100%" px="md" align="center" justify="space-between" style={{ position: 'relative' }}>
-          <Button variant="subtle" size="sm" onClick={() => router.push('/')}>← トップ</Button>
+          <Button variant="subtle" onClick={() => router.push('/')}>← トップ</Button>
           <Title order={4} style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>ユーザー管理</Title>
 
-          {/* デスクトップ */}
-          <Group gap="xs" visibleFrom="sm">
+          {/* PC */}
+          <Group gap="xs" visibleFrom="md">
             <Button variant="light" onClick={openScanner}>インポート</Button>
             <Button variant="light" onClick={openShare}>共有</Button>
             <Button color="red" variant="light" onClick={openReset}>統計リセット</Button>
           </Group>
 
-          {/* モバイル: ハンバーガー */}
-          <Burger hiddenFrom="sm" opened={menuOpened} onClick={menuOpened ? closeMenu : openMenu} size="sm" />
+          {/* モバイル・タブレット: ハンバーガー */}
+          <Burger hiddenFrom="md" opened={menuOpened} onClick={menuOpened ? closeMenu : openMenu} size="sm" />
         </Flex>
       </AppShell.Header>
 

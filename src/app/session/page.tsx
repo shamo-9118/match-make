@@ -163,8 +163,8 @@ export default function SessionPage() {
             {totalRounds > 0 ? `ラウンド ${displayIndex + 1} / ${totalRounds}` : '開始前'}
           </Text>
 
-          {/* デスクトップ: ボタン直接表示 */}
-          <Group gap="xs" visibleFrom="sm">
+          {/* PC: ボタン直接表示 */}
+          <Group gap="xs" visibleFrom="md">
             {currentRound && !isViewing && (
               <Button
                 size="sm"
@@ -178,8 +178,8 @@ export default function SessionPage() {
             <Button variant="light" size="sm" onClick={openParticipants}>参加者管理</Button>
           </Group>
 
-          {/* モバイル: ハンバーガー */}
-          <Burger hiddenFrom="sm" opened={menuOpened} onClick={menuOpened ? closeMenu : openMenu} size="sm" />
+          {/* モバイル・タブレット: ハンバーガー */}
+          <Burger hiddenFrom="md" opened={menuOpened} onClick={menuOpened ? closeMenu : openMenu} size="sm" />
         </Flex>
       </AppShell.Header>
 
