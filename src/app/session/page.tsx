@@ -460,6 +460,25 @@ function CourtCard({ court, users, onPlayerClick, selectedId }: { court: Court; 
     );
   };
 
+  const PlayerRow = ({ id }: { id: string }) => {
+    const u = getUser(id);
+    const isSelected = selectedId === id;
+    return (
+      <Flex align="center" gap="sm" style={{ cursor: 'pointer' }} onClick={() => u && onPlayerClick(u)}>
+        <Avatar
+          src={u?.imagePath} size={48} radius="xl"
+          style={{ boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
+          color={u?.color ?? 'blue'}
+        >
+          {u?.name[0] ?? '?'}
+        </Avatar>
+        <Text size="lg" fw={700} c="white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>
+          {u?.name ?? id}
+        </Text>
+      </Flex>
+    );
+  };
+
   return (
     <Card radius="md" padding={0} style={{ overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
       {/* タイトルバー */}
@@ -467,10 +486,22 @@ function CourtCard({ court, users, onPlayerClick, selectedId }: { court: Court; 
         <Text c="white" fw={700}>コート {court.courtNumber}</Text>
       </Flex>
 
-      {/* コートフィールド */}
+      {/* モバイルレイアウト */}
+      <Stack bg={COURT_GREEN} p="lg" gap="xs" hiddenFrom="sm">
+        {court.teamA.map((id) => <PlayerRow key={id} id={id} />)}
+        <Flex align="center" gap="sm" my={4}>
+          <Paper flex={1} h={2} bg="rgba(255,255,255,0.5)" radius="sm" />
+          <Text c="white" fw={900} size="md">VS</Text>
+          <Paper flex={1} h={2} bg="rgba(255,255,255,0.5)" radius="sm" />
+        </Flex>
+        {court.teamB.map((id) => <PlayerRow key={id} id={id} />)}
+      </Stack>
+
+      {/* デスクトップレイアウト */}
       <Flex
         bg={COURT_GREEN} p="xl" align="center" justify="space-around"
         style={{ minHeight: 180 }}
+        visibleFrom="sm"
       >
         {/* チームA */}
         <Stack align="center" flex={1} gap="md">
