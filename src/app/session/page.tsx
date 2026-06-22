@@ -220,7 +220,7 @@ export default function SessionPage() {
                         >
                           <Avatar
                             src={u?.imagePath} size={80} radius="xl" color={u?.color ?? 'gray'}
-                            style={{ border: isSelected ? '3px solid var(--mantine-color-orange-4)' : 'none', boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
+                            style={{ boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
                           >
                             {u?.name[0] ?? '?'}
                           </Avatar>
@@ -289,7 +289,7 @@ export default function SessionPage() {
                             >
                               <Avatar
                                 src={u?.imagePath} size={36} radius="xl" color={u?.color ?? 'gray'}
-                                style={{ border: isSelected ? '3px solid var(--mantine-color-orange-4)' : 'none', boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
+                                style={{ boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
                               >
                                 {u?.name[0] ?? '?'}
                               </Avatar>
@@ -425,7 +425,7 @@ function CourtCard({ court, users, onPlayerClick, selectedId }: { court: Court; 
       <Stack align="center" gap={8} style={{ cursor: 'pointer' }} onClick={() => u && onPlayerClick(u)}>
         <Avatar
           src={u?.imagePath} size={80} radius="xl"
-          style={{ border: isSelected ? '3px solid var(--mantine-color-orange-4)' : 'none', boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
+          style={{ boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
           color={u?.color ?? 'blue'}
         >
           {u?.name[0] ?? '?'}
