@@ -168,7 +168,7 @@ export default function UsersPage() {
       <AppShell.Header>
         <Flex h="100%" px="md" align="center" justify="space-between">
           <Button variant="subtle" size="sm" onClick={() => router.push('/')}>← トップ</Button>
-          <Title order={3} size={{ base: 'h4', sm: 'h3' }}>ユーザー管理</Title>
+          <Title order={4}>ユーザー管理</Title>
 
           {/* デスクトップ */}
           <Group gap="xs" visibleFrom="sm">

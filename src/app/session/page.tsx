@@ -159,7 +159,7 @@ export default function SessionPage() {
       <AppShell.Header>
         <Flex h="100%" px="md" align="center" justify="space-between">
           <Button color="red" variant="light" size="sm" onClick={openEnd}>← 終了</Button>
-          <Text fw={700} size={{ base: 'md', sm: 'lg' }}>
+          <Text fw={700} size="md">
             {totalRounds > 0 ? `ラウンド ${displayIndex + 1} / ${totalRounds}` : '開始前'}
           </Text>
 
