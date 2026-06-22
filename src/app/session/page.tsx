@@ -244,10 +244,19 @@ export default function SessionPage() {
                           <Avatar
                             src={u?.imagePath} size={80} radius="xl" color={u?.color ?? 'gray'}
                             style={{ boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
+                            visibleFrom="sm"
                           >
                             {u?.name[0] ?? '?'}
                           </Avatar>
-                          <Text size="lg" fw={700} c="dimmed">{u?.name ?? id}</Text>
+                          <Avatar
+                            src={u?.imagePath} size={40} radius="xl" color={u?.color ?? 'gray'}
+                            style={{ boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
+                            hiddenFrom="sm"
+                          >
+                            {u?.name[0] ?? '?'}
+                          </Avatar>
+                          <Text size="lg" fw={700} c="dimmed" visibleFrom="sm">{u?.name ?? id}</Text>
+                          <Text size="md" fw={700} c="dimmed" hiddenFrom="sm">{u?.name ?? id}</Text>
                         </Stack>
                       );
                     })}
