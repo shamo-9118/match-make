@@ -247,20 +247,16 @@ export default function UsersPage() {
                     {user.name[0]}
                   </Avatar>
                   <Text flex={1} fw={500} size="lg">{user.name}</Text>
-                  <Stack gap={4} align="flex-end">
-                    <Group gap="xs">
-                      <Badge variant="light" color="blue">{user.totalPlayCount}試合</Badge>
-                      <Badge variant="light" color="gray">{user.totalRestCount}休</Badge>
-                    </Group>
-                    <Group gap="xs">
-                      <ActionIcon variant="light" onClick={() => openEditModal(user)}>
-                        <IconPencil size={16} />
-                      </ActionIcon>
-                      <ActionIcon variant="light" color="red" onClick={() => setDeletingUser({ id: user.id, name: user.name })}>
-                        <IconTrash size={16} />
-                      </ActionIcon>
-                    </Group>
-                  </Stack>
+                  <Group gap="xs">
+                    <Badge variant="light" color="blue">{user.totalPlayCount}試合</Badge>
+                    <Badge variant="light" color="gray">{user.totalRestCount}休</Badge>
+                    <ActionIcon variant="light" onClick={() => openEditModal(user)}>
+                      <IconPencil size={16} />
+                    </ActionIcon>
+                    <ActionIcon variant="light" color="red" onClick={() => setDeletingUser({ id: user.id, name: user.name })}>
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Group>
                 </Flex>
               </Card>
             ))}
