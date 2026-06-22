@@ -215,10 +215,13 @@ export default function SessionPage() {
                       return (
                         <Stack
                           key={id} align="center" gap={4}
-                          style={{ cursor: currentSwapMode ? 'pointer' : 'pointer', outline: isSelected ? '2px solid var(--mantine-color-orange-5)' : 'none', borderRadius: 8 }}
+                          style={{ cursor: 'pointer' }}
                           onClick={() => currentSwapMode ? handleCurrentSwapClick(id) : u && openEditUser(u)}
                         >
-                          <Avatar src={u?.imagePath} size={80} radius="xl" color={u?.color ?? 'gray'}>
+                          <Avatar
+                            src={u?.imagePath} size={80} radius="xl" color={u?.color ?? 'gray'}
+                            style={{ border: isSelected ? '3px solid var(--mantine-color-orange-4)' : 'none', boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
+                          >
                             {u?.name[0] ?? '?'}
                           </Avatar>
                           <Text size="lg" fw={700} c="dimmed">{u?.name ?? id}</Text>
@@ -281,10 +284,13 @@ export default function SessionPage() {
                           return (
                             <Stack
                               key={id} align="center" gap={2}
-                              style={{ cursor: swapMode ? 'pointer' : 'default', outline: isSelected ? '2px solid var(--mantine-color-orange-5)' : 'none', borderRadius: 8 }}
+                              style={{ cursor: swapMode ? 'pointer' : 'default' }}
                               onClick={() => swapMode && handleSwapClick(id)}
                             >
-                              <Avatar src={u?.imagePath} size={36} radius="xl" color={u?.color ?? 'gray'}>
+                              <Avatar
+                                src={u?.imagePath} size={36} radius="xl" color={u?.color ?? 'gray'}
+                                style={{ border: isSelected ? '3px solid var(--mantine-color-orange-4)' : 'none', boxShadow: isSelected ? '0 0 0 3px var(--mantine-color-orange-5)' : 'none' }}
+                              >
                                 {u?.name[0] ?? '?'}
                               </Avatar>
                               <Text size="xs" c="dimmed">{u?.name ?? id}</Text>
