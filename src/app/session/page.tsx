@@ -3,7 +3,7 @@ import { useState, useRef } from 'react';
 import {
   AppShell, Button, Group, Stack, Avatar, Text, Card,
   Flex, Badge, Modal, SimpleGrid, Paper, Divider,
-  TextInput, Popover, ColorSwatch,
+  TextInput, Popover, ColorSwatch, Burger, Drawer,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { useRouter } from 'next/navigation';
@@ -20,6 +20,7 @@ export default function SessionPage() {
   const { confirmNextRound, setNextRound, goBack, goToLatest, updateParticipants, swapNextRoundPlayers, swapCurrentRoundPlayers, endSession } = useSessionStore();
   const { users, updateUserStats, updateUser } = useUserStore();
   const [participantsOpened, { open: openParticipants, close: closeParticipants }] = useDisclosure(false);
+  const [menuOpened, { open: openMenu, close: closeMenu }] = useDisclosure(false);
   const [endOpened, { open: openEnd, close: closeEnd }] = useDisclosure(false);
   const [previewOpened, { toggle: togglePreview }] = useDisclosure(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -158,10 +159,12 @@ export default function SessionPage() {
       <AppShell.Header>
         <Flex h="100%" px="md" align="center" justify="space-between">
           <Button color="red" variant="light" size="sm" onClick={openEnd}>← 終了</Button>
-          <Text fw={700} size="lg">
+          <Text fw={700} size={{ base: 'md', sm: 'lg' }}>
             {totalRounds > 0 ? `ラウンド ${displayIndex + 1} / ${totalRounds}` : '開始前'}
           </Text>
-          <Group gap="xs">
+
+          {/* デスクトップ: ボタン直接表示 */}
+          <Group gap="xs" visibleFrom="sm">
             {currentRound && !isViewing && (
               <Button
                 size="sm"
@@ -174,8 +177,28 @@ export default function SessionPage() {
             )}
             <Button variant="light" size="sm" onClick={openParticipants}>参加者管理</Button>
           </Group>
+
+          {/* モバイル: ハンバーガー */}
+          <Burger hiddenFrom="sm" opened={menuOpened} onClick={menuOpened ? closeMenu : openMenu} size="sm" />
         </Flex>
       </AppShell.Header>
+
+      <Drawer opened={menuOpened} onClose={closeMenu} position="right" size="xs" title="メニュー">
+        <Stack gap="sm">
+          {currentRound && !isViewing && (
+            <Button
+              fullWidth
+              variant={currentSwapMode ? 'filled' : 'light'}
+              color="orange"
+              onClick={() => { currentSwapMode ? exitCurrentSwapMode() : setCurrentSwapMode(true); closeMenu(); }}
+            >
+              {currentSwapMode ? 'キャンセル' : '交代'}
+            </Button>
+          )}
+          <Button fullWidth variant="light" onClick={() => { openParticipants(); closeMenu(); }}>参加者管理</Button>
+          <Button fullWidth color="red" variant="light" onClick={() => { openEnd(); closeMenu(); }}>終了</Button>
+        </Stack>
+      </Drawer>
 
       <AppShell.Main>
         {/* 過去閲覧バナー */}

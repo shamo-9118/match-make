@@ -4,6 +4,7 @@ import jsQR from 'jsqr';
 import {
   AppShell, Title, TextInput, Button, Group, Stack, Avatar,
   Text, ActionIcon, Card, Badge, Flex, Modal, Popover, ColorSwatch, SimpleGrid, Checkbox,
+  Burger, Drawer,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconPlus, IconTrash, IconPencil, IconCheck, IconX } from '@tabler/icons-react';
@@ -22,6 +23,7 @@ export default function UsersPage() {
   const [resetOpened, { open: openReset, close: closeReset }] = useDisclosure(false);
   const [deletingUser, setDeletingUser] = useState<{ id: string; name: string } | null>(null);
   const [shareOpened, { open: openShare, close: closeShare }] = useDisclosure(false);
+  const [menuOpened, { open: openMenu, close: closeMenu }] = useDisclosure(false);
   const [selectedShareIds, setSelectedShareIds] = useState<Set<string>>(new Set());
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -165,13 +167,18 @@ export default function UsersPage() {
     <AppShell header={{ height: 60 }} padding="md">
       <AppShell.Header>
         <Flex h="100%" px="md" align="center" justify="space-between">
-          <Button variant="subtle" onClick={() => router.push('/')}>← トップ</Button>
-          <Title order={3}>ユーザー管理</Title>
-          <Group gap="xs">
+          <Button variant="subtle" size="sm" onClick={() => router.push('/')}>← トップ</Button>
+          <Title order={3} size={{ base: 'h4', sm: 'h3' }}>ユーザー管理</Title>
+
+          {/* デスクトップ */}
+          <Group gap="xs" visibleFrom="sm">
             <Button variant="light" onClick={openScanner}>インポート</Button>
             <Button variant="light" onClick={openShare}>共有</Button>
             <Button color="red" variant="light" onClick={openReset}>統計リセット</Button>
           </Group>
+
+          {/* モバイル: ハンバーガー */}
+          <Burger hiddenFrom="sm" opened={menuOpened} onClick={menuOpened ? closeMenu : openMenu} size="sm" />
         </Flex>
       </AppShell.Header>
 
@@ -323,6 +330,14 @@ export default function UsersPage() {
           </Stack>
         )}
       </Modal>
+
+      <Drawer opened={menuOpened} onClose={closeMenu} position="right" size="xs" title="メニュー">
+        <Stack gap="sm">
+          <Button fullWidth variant="light" onClick={() => { openScanner(); closeMenu(); }}>インポート</Button>
+          <Button fullWidth variant="light" onClick={() => { openShare(); closeMenu(); }}>共有</Button>
+          <Button fullWidth color="red" variant="light" onClick={() => { openReset(); closeMenu(); }}>統計リセット</Button>
+        </Stack>
+      </Drawer>
 
       <Modal opened={scanOpened} onClose={handleScanClose} title="QRコードをスキャン" centered size="sm">
         {scanError ? (
