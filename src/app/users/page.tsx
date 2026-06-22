@@ -209,7 +209,36 @@ export default function UsersPage() {
           <Stack gap="sm">
             {users.map((user) => (
               <Card key={user.id} withBorder padding="sm" radius="md">
-                <Flex align="center" gap="md">
+                {/* モバイル: 2行レイアウト */}
+                <Stack hiddenFrom="sm" gap="xs">
+                  <Flex align="center" gap="md">
+                    <Avatar
+                      src={user.imagePath} size={48} radius="xl" color={user.color}
+                      style={{ cursor: 'pointer', flexShrink: 0 }}
+                      onClick={() => { setUploadingId(user.id); fileInputRef.current?.click(); }}
+                    >
+                      {user.name[0]}
+                    </Avatar>
+                    <Text flex={1} fw={500} size="md">{user.name}</Text>
+                  </Flex>
+                  <Flex justify="space-between" align="center">
+                    <Group gap="xs">
+                      <Badge variant="light" color="blue" size="sm">{user.totalPlayCount}試合</Badge>
+                      <Badge variant="light" color="gray" size="sm">{user.totalRestCount}休</Badge>
+                    </Group>
+                    <Group gap="xs">
+                      <ActionIcon variant="light" size="sm" onClick={() => openEditModal(user)}>
+                        <IconPencil size={14} />
+                      </ActionIcon>
+                      <ActionIcon variant="light" color="red" size="sm" onClick={() => setDeletingUser({ id: user.id, name: user.name })}>
+                        <IconTrash size={14} />
+                      </ActionIcon>
+                    </Group>
+                  </Flex>
+                </Stack>
+
+                {/* タブレット/PC: 1行レイアウト */}
+                <Flex visibleFrom="sm" align="center" gap="md">
                   <Avatar
                     src={user.imagePath} size={52} radius="xl" color={user.color}
                     style={{ cursor: 'pointer', flexShrink: 0 }}
