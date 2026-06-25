@@ -97,6 +97,7 @@ export default function SessionPage() {
       const updated = applyRoundToUsers(newRound, reverted);
       updateUserStats(updated);
       swapCurrentRoundPlayers(idA, idB);
+      scheduleNextRound(newRound, updated, session!.participantIds);
       setSelectedCurrentSwapId(null);
       setCurrentSwapMode(false);
     }
