@@ -324,7 +324,11 @@ export default function TeamSetupPage() {
                     <Group gap={0} align="center">
                       <Button variant="default" size="xl" w={64} px={0} fz="xl" fw={900}
                         disabled={totalPairs <= 1}
-                        onClick={() => setTotalPairs(totalPairs - 1)}>−</Button>
+                        onClick={() => {
+                          const next = totalPairs - 1;
+                          setTotalPairs(next);
+                          if (singlesPairs > next) setSinglesPairs(next);
+                        }}>−</Button>
                       <Text fw={900} ta="center" style={{ fontSize: '2.5rem', minWidth: 72 }}>{totalPairs}</Text>
                       <Button variant="default" size="xl" w={64} px={0} fz="xl" fw={900}
                         disabled={totalPairs >= 9}
