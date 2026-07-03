@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import {
   AppShell, Title, Button, Group, Stack, Avatar, Text, Card,
-  Flex, SegmentedControl, SimpleGrid, Checkbox,
+  Flex, SegmentedControl, SimpleGrid, Checkbox, Modal,
 } from '@mantine/core';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/userStore';
@@ -12,12 +12,13 @@ import { generateRound } from '@/utils/algorithm';
 
 export default function SetupPage() {
   const router = useRouter();
-  const { users } = useUserStore();
+  const { users, resetAllStats } = useUserStore();
   const { startSession, setNextRound } = useSessionStore();
 
   const [courtCount, setCourtCount] = useState(2);
   const [gameFormat, setGameFormat] = useState<GameFormat>('doubles');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [resetConfirmOpened, setResetConfirmOpened] = useState(false);
 
   const sortedUsers = [...users].sort((a, b) => b.totalPlayCount - a.totalPlayCount);
   const playersPerCourt = gameFormat === 'doubles' ? 4 : 2;
@@ -32,13 +33,26 @@ export default function SetupPage() {
     });
   };
 
-  const handleStart = () => {
+  const startGame = (shouldReset: boolean) => {
+    if (shouldReset) resetAllStats();
     const participantIds = [...selectedIds];
     startSession(courtCount, gameFormat, participantIds);
     const participants = users.filter((u) => participantIds.includes(u.id));
     const firstRound = generateRound(participants, courtCount, gameFormat, null, 0);
     setNextRound(firstRound);
     router.push('/session');
+  };
+
+  const handleStart = () => {
+    // 選択した参加者のいずれかに統計が残っていれば確認を挟む
+    const hasStats = users
+      .filter((u) => selectedIds.has(u.id))
+      .some((u) => u.totalPlayCount > 0 || u.totalRestCount > 0);
+    if (hasStats) {
+      setResetConfirmOpened(true);
+    } else {
+      startGame(false);
+    }
   };
 
   return (
@@ -129,6 +143,23 @@ export default function SetupPage() {
           </Button>
         </Stack>
       </AppShell.Main>
+
+      <Modal
+        opened={resetConfirmOpened}
+        onClose={() => setResetConfirmOpened(false)}
+        title="統計が残っています"
+        centered
+      >
+        <Text size="sm">参加者に前回の統計が残っています。引き継いでゲームを開始しますか？</Text>
+        <Group mt="md" justify="flex-end">
+          <Button variant="default" onClick={() => { setResetConfirmOpened(false); startGame(false); }}>
+            引き継ぐ
+          </Button>
+          <Button color="red" onClick={() => { setResetConfirmOpened(false); startGame(true); }}>
+            リセットして開始
+          </Button>
+        </Group>
+      </Modal>
     </AppShell>
   );
 }

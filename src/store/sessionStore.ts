@@ -12,6 +12,7 @@ interface SessionStore {
   updateParticipants: (participantIds: string[]) => void;
   swapNextRoundPlayers: (idA: string, idB: string) => void;
   swapCurrentRoundPlayers: (idA: string, idB: string) => void;
+  clearNextRound: () => void;
   endSession: () => void;
 }
 
@@ -101,6 +102,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     }));
     const newResting = next.restingPlayerIds.map((id) => (id === idA ? idB : id === idB ? idA : id));
     set({ session: { ...session, nextRound: { ...next, courts: newCourts, restingPlayerIds: newResting } } });
+  },
+
+  clearNextRound: () => {
+    const { session } = get();
+    if (!session) return;
+    set({ session: { ...session, nextRound: undefined } });
   },
 
   endSession: () => set({ session: null }),

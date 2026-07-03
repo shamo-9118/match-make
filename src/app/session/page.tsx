@@ -17,7 +17,7 @@ import { IconCoffee } from '@tabler/icons-react';
 export default function SessionPage() {
   const router = useRouter();
   const session = useSessionStore((s) => s.session);
-  const { confirmNextRound, setNextRound, goBack, goToLatest, updateParticipants, swapNextRoundPlayers, swapCurrentRoundPlayers, endSession } = useSessionStore();
+  const { confirmNextRound, setNextRound, goBack, goToLatest, updateParticipants, swapNextRoundPlayers, swapCurrentRoundPlayers, clearNextRound, endSession } = useSessionStore();
   const { users, updateUserStats, updateUser } = useUserStore();
   const [participantsOpened, { open: openParticipants, close: closeParticipants }] = useDisclosure(false);
   const [menuOpened, { open: openMenu, close: closeMenu }] = useDisclosure(false);
@@ -96,6 +96,7 @@ export default function SessionPage() {
       const reverted = revertRoundFromUsers(oldRound, users);
       const updated = applyRoundToUsers(newRound, reverted);
       updateUserStats(updated);
+      clearNextRound();
       swapCurrentRoundPlayers(idA, idB);
       scheduleNextRound(newRound, updated, session!.participantIds);
       setSelectedCurrentSwapId(null);
@@ -349,7 +350,10 @@ export default function SessionPage() {
           >
             ← 戻る
           </Button>
-          <Button flex={2} size="md" onClick={handleNext}>
+          <Button
+            flex={2} size="md" onClick={handleNext}
+            loading={!isViewing && !session.nextRound}
+          >
             {isViewing ? '最新へジャンプ →' : '次へ →'}
           </Button>
         </Flex>

@@ -90,7 +90,9 @@ function scorePairMatching(
 
 /**
  * ペアマッチングのタイブレーカースコア
- * ペアスコアが同点のとき、潜在パートナー同士の対戦履歴が少ない組み合わせを優先する
+ * ペアスコアが同点のとき、潜在パートナー同士の対戦履歴が少ない組み合わせを優先する。
+ * また CONSECUTIVE_OPPONENT_PENALTY により、直前ラウンドで対戦した2人をパートナーに
+ * 組みにくくする効果もある（意図した設計）。
  */
 function opponentTiebreakerScore(
   matching: [string, string][],
@@ -167,10 +169,26 @@ export function generateRound(
     restingPlayers = shuffle(candidates).slice(0, restCount);
 
     if (restingPlayers.length < restCount) {
-      const remaining = sorted
-        .filter((u) => !restingPlayers.includes(u))
-        .slice(0, restCount - restingPlayers.length);
-      restingPlayers = [...restingPlayers, ...remaining];
+      const pickedIds = new Set(restingPlayers.map((u) => u.id));
+      const remaining = sorted.filter((u) => !pickedIds.has(u.id));
+
+      // 同じ優先度（restCount・前回休憩有無）内でシャッフルして登録順バイアスを除去
+      const shuffledRemaining: User[] = [];
+      let i = 0;
+      while (i < remaining.length) {
+        let j = i + 1;
+        while (
+          j < remaining.length &&
+          remaining[j].totalRestCount === remaining[i].totalRestCount &&
+          prevRestingIds.includes(remaining[j].id) === prevRestingIds.includes(remaining[i].id)
+        ) {
+          j++;
+        }
+        shuffledRemaining.push(...shuffle(remaining.slice(i, j)));
+        i = j;
+      }
+
+      restingPlayers = [...restingPlayers, ...shuffledRemaining.slice(0, restCount - restingPlayers.length)];
     }
   }
 
