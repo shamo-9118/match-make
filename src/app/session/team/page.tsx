@@ -171,13 +171,13 @@ export default function TeamSessionPage() {
                         <Text c="white" fw={900} size="sm">VS</Text>
                         <Paper flex={1} h={2} bg="rgba(255,255,255,0.4)" radius="sm" />
                       </Flex>
+                      <Flex align="center" gap={6}>
+                        <Avatar src={teamB.logoPath} size={18} radius="sm">{teamB.name[0]}</Avatar>
+                        <Text size="xs" c="rgba(255,255,255,0.75)" fw={600}>{teamB.name}</Text>
+                      </Flex>
                       <SimpleGrid cols={current.pairB.playerIds.length} spacing="xs">
                         {current.pairB.playerIds.map((id) => <PlayerMobile key={id} id={id} />)}
                       </SimpleGrid>
-                      <Flex align="center" gap={6} justify="flex-end">
-                        <Text size="xs" c="rgba(255,255,255,0.75)" fw={600}>{teamB.name}</Text>
-                        <Avatar src={teamB.logoPath} size={18} radius="sm">{teamB.name[0]}</Avatar>
-                      </Flex>
                     </Stack>
 
                     {/* デスクトップ: 横レイアウト */}
@@ -199,13 +199,13 @@ export default function TeamSessionPage() {
                       </Stack>
 
                       <Stack align="center" flex={1} gap="sm">
+                        <Flex align="center" gap={6}>
+                          <Avatar src={teamB.logoPath} size={20} radius="sm">{teamB.name[0]}</Avatar>
+                          <Text size="xs" c="rgba(255,255,255,0.75)" fw={600}>{teamB.name}</Text>
+                        </Flex>
                         <Group gap="xl" justify="center">
                           {current.pairB.playerIds.map((id) => <PlayerChip key={id} id={id} />)}
                         </Group>
-                        <Flex align="center" gap={6}>
-                          <Text size="xs" c="rgba(255,255,255,0.75)" fw={600}>{teamB.name}</Text>
-                          <Avatar src={teamB.logoPath} size={20} radius="sm">{teamB.name[0]}</Avatar>
-                        </Flex>
                       </Stack>
                     </Flex>
 
