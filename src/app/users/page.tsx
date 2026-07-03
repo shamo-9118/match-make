@@ -4,7 +4,7 @@ import jsQR from 'jsqr';
 import {
   AppShell, Title, TextInput, Button, Group, Stack, Avatar,
   Text, ActionIcon, Card, Badge, Flex, Modal, ColorSwatch, SimpleGrid, Checkbox,
-  Burger, Drawer,
+  Burger, Drawer, SegmentedControl,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import { IconPlus, IconTrash, IconPencil } from '@tabler/icons-react';
@@ -16,11 +16,13 @@ import { USER_COLORS } from '@/utils/colors';
 
 export default function UsersPage() {
   const router = useRouter();
-  const { users, addUser, updateUser, deleteUser, resetAllStats } = useUserStore();
+  const { users, addUser, updateUser, deleteUser, resetAllStats, resetTeamBattleStats } = useUserStore();
   const [name, setName] = useState('');
-  const [editModalUser, setEditModalUser] = useState<{ id: string; name: string; color: string } | null>(null);
+  const [editModalUser, setEditModalUser] = useState<{ id: string; name: string; color: string; gender: string } | null>(null);
   const [editModalName, setEditModalName] = useState('');
   const [editModalColor, setEditModalColor] = useState('');
+  const [editModalGender, setEditModalGender] = useState<string>('null');
+  const [resetTeamBattleOpened, { open: openResetTeamBattle, close: closeResetTeamBattle }] = useDisclosure(false);
   const [resetOpened, { open: openReset, close: closeReset }] = useDisclosure(false);
   const [deletingUser, setDeletingUser] = useState<{ id: string; name: string } | null>(null);
   const [shareOpened, { open: openShare, close: closeShare }] = useDisclosure(false);
@@ -154,16 +156,20 @@ export default function UsersPage() {
     reader.readAsDataURL(file);
   };
 
-  const openEditModal = (user: { id: string; name: string; color: string }) => {
+  const openEditModal = (user: { id: string; name: string; color: string; gender: string }) => {
     setEditModalUser(user);
     setEditModalName(user.name);
     setEditModalColor(user.color);
+    setEditModalGender(user.gender ?? 'null');
   };
 
   const handleEditSave = () => {
     if (!editModalUser) return;
     if (editModalName.trim()) updateUser(editModalUser.id, { name: editModalName.trim() });
-    updateUser(editModalUser.id, { color: editModalColor });
+    updateUser(editModalUser.id, {
+      color: editModalColor,
+      gender: editModalGender === 'null' ? null : editModalGender as 'male' | 'female',
+    });
     setEditModalUser(null);
   };
 
@@ -183,6 +189,7 @@ export default function UsersPage() {
           <Group gap="xs" visibleFrom="md">
             <Button variant="light" onClick={openScanner}>インポート</Button>
             <Button variant="light" onClick={openShare}>共有</Button>
+            <Button color="orange" variant="light" onClick={openResetTeamBattle}>団体戦統計リセット</Button>
             <Button color="red" variant="light" onClick={openReset}>統計リセット</Button>
           </Group>
 
@@ -227,7 +234,7 @@ export default function UsersPage() {
                       <Badge variant="light" color="gray" size="sm">{user.totalRestCount}休</Badge>
                     </Group>
                     <Group gap="xs">
-                      <ActionIcon variant="light" size="sm" onClick={() => openEditModal(user)}>
+                      <ActionIcon variant="light" size="sm" onClick={() => openEditModal({ ...user, gender: user.gender ?? 'null' })}>
                         <IconPencil size={14} />
                       </ActionIcon>
                       <ActionIcon variant="light" color="red" size="sm" onClick={() => setDeletingUser({ id: user.id, name: user.name })}>
@@ -250,7 +257,7 @@ export default function UsersPage() {
                   <Group gap="xs">
                     <Badge variant="light" color="blue">{user.totalPlayCount}試合</Badge>
                     <Badge variant="light" color="gray">{user.totalRestCount}休</Badge>
-                    <ActionIcon variant="light" onClick={() => openEditModal(user)}>
+                    <ActionIcon variant="light" onClick={() => openEditModal({ ...user, gender: user.gender ?? 'null' })}>
                       <IconPencil size={16} />
                     </ActionIcon>
                     <ActionIcon variant="light" color="red" onClick={() => setDeletingUser({ id: user.id, name: user.name })}>
@@ -325,6 +332,7 @@ export default function UsersPage() {
         <Stack gap="sm">
           <Button fullWidth variant="light" onClick={() => { openScanner(); closeMenu(); }}>インポート</Button>
           <Button fullWidth variant="light" onClick={() => { openShare(); closeMenu(); }}>共有</Button>
+          <Button fullWidth color="orange" variant="light" onClick={() => { openResetTeamBattle(); closeMenu(); }}>団体戦統計リセット</Button>
           <Button fullWidth color="red" variant="light" onClick={() => { openReset(); closeMenu(); }}>統計リセット</Button>
         </Stack>
       </Drawer>
@@ -372,6 +380,18 @@ export default function UsersPage() {
             autoFocus
           />
           <Stack gap="xs">
+            <Text size="sm" fw={500}>性別</Text>
+            <SegmentedControl
+              value={editModalGender}
+              onChange={setEditModalGender}
+              data={[
+                { label: '未設定', value: 'null' },
+                { label: '男性', value: 'male' },
+                { label: '女性', value: 'female' },
+              ]}
+            />
+          </Stack>
+          <Stack gap="xs">
             <Text size="sm" fw={500}>カラー</Text>
             <SimpleGrid cols={6} spacing={8}>
               {USER_COLORS.map((c) => (
@@ -390,6 +410,14 @@ export default function UsersPage() {
             <Button onClick={handleEditSave}>保存</Button>
           </Group>
         </Stack>
+      </Modal>
+
+      <Modal opened={resetTeamBattleOpened} onClose={closeResetTeamBattle} title="団体戦統計リセット" centered>
+        <Text>団体戦のペア・対戦履歴をリセットしますか？</Text>
+        <Group mt="md" justify="flex-end">
+          <Button variant="default" onClick={closeResetTeamBattle}>キャンセル</Button>
+          <Button color="orange" onClick={() => { resetTeamBattleStats(); closeResetTeamBattle(); }}>リセット</Button>
+        </Group>
       </Modal>
 
       <Modal opened={!!deletingUser} onClose={() => setDeletingUser(null)} title="ユーザーを削除" centered>

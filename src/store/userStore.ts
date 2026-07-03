@@ -6,11 +6,12 @@ import { pickColor } from '@/utils/colors';
 
 interface UserStore {
   users: User[];
-  addUser: (user: Omit<User, 'color' | 'totalPlayCount' | 'totalRestCount' | 'pairHistory' | 'opponentHistory'>) => void;
-  updateUser: (id: string, updates: Partial<Pick<User, 'name' | 'imagePath' | 'color'>>) => void;
+  addUser: (user: Omit<User, 'color' | 'gender' | 'totalPlayCount' | 'totalRestCount' | 'pairHistory' | 'opponentHistory' | 'teamBattlePairHistory' | 'teamBattleOpponentHistory'>) => void;
+  updateUser: (id: string, updates: Partial<Pick<User, 'name' | 'imagePath' | 'color' | 'gender'>>) => void;
   deleteUser: (id: string) => void;
   updateUserStats: (updatedUsers: User[]) => void;
   resetAllStats: () => void;
+  resetTeamBattleStats: () => void;
 }
 
 export const useUserStore = create<UserStore>()(
@@ -22,10 +23,13 @@ export const useUserStore = create<UserStore>()(
         const newUser: User = {
           ...user,
           color: pickColor(get().users),
+          gender: null,
           totalPlayCount: 0,
           totalRestCount: 0,
           pairHistory: {},
           opponentHistory: {},
+          teamBattlePairHistory: {},
+          teamBattleOpponentHistory: {},
         };
         set({ users: [...get().users, newUser] });
       },
@@ -58,10 +62,20 @@ export const useUserStore = create<UserStore>()(
           })),
         });
       },
+
+      resetTeamBattleStats: () => {
+        set({
+          users: get().users.map((u) => ({
+            ...u,
+            teamBattlePairHistory: {},
+            teamBattleOpponentHistory: {},
+          })),
+        });
+      },
     }),
     {
       name: 'match-make:users',
-      version: 1,
+      version: 2,
       migrate: (persistedState: unknown) => {
         const state = persistedState as { users: User[] };
         const migratedUsers: User[] = [];
@@ -69,6 +83,9 @@ export const useUserStore = create<UserStore>()(
           migratedUsers.push({
             ...u,
             color: u.color ?? pickColor(migratedUsers),
+            gender: u.gender ?? null,
+            teamBattlePairHistory: u.teamBattlePairHistory ?? {},
+            teamBattleOpponentHistory: u.teamBattleOpponentHistory ?? {},
           });
         }
         return { ...state, users: migratedUsers };

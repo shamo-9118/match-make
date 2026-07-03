@@ -2,8 +2,9 @@
 import { useState } from 'react';
 import {
   AppShell, Title, Button, Group, Stack, Avatar, Text, Card,
-  Flex, SegmentedControl, SimpleGrid, Checkbox, Modal,
+  Flex, SegmentedControl, SimpleGrid, Checkbox, Modal, ThemeIcon,
 } from '@mantine/core';
+import { IconSwords, IconUsers } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/userStore';
 import { useSessionStore } from '@/store/sessionStore';
@@ -66,6 +67,34 @@ export default function SetupPage() {
 
       <AppShell.Main>
         <Stack maw={900} mx="auto" gap="lg">
+          {/* モード選択 */}
+          <Card withBorder radius="md" padding="md">
+            <Stack gap="sm">
+              <Text fw={600}>モード</Text>
+              <Group gap="sm">
+                <Card
+                  withBorder radius="md" padding="sm" flex={1}
+                  style={{ cursor: 'pointer', borderColor: 'var(--mantine-color-blue-5)', borderWidth: 2, backgroundColor: 'var(--mantine-color-blue-0)' }}
+                >
+                  <Flex align="center" gap="sm">
+                    <ThemeIcon variant="light" color="blue"><IconSwords size={16} /></ThemeIcon>
+                    <Text fw={600} size="sm">個人戦</Text>
+                  </Flex>
+                </Card>
+                <Card
+                  withBorder radius="md" padding="sm" flex={1}
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => router.push('/setup/team')}
+                >
+                  <Flex align="center" gap="sm">
+                    <ThemeIcon variant="light" color="gray"><IconUsers size={16} /></ThemeIcon>
+                    <Text fw={600} size="sm" c="dimmed">団体戦</Text>
+                  </Flex>
+                </Card>
+              </Group>
+            </Stack>
+          </Card>
+
           <Title order={4}>ゲーム設定</Title>
 
           {/* コート数 */}
