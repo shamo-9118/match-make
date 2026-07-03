@@ -232,6 +232,11 @@ export default function UsersPage() {
                     <Group gap="xs">
                       <Badge variant="light" color="blue" size="sm">{user.totalPlayCount}試合</Badge>
                       <Badge variant="light" color="gray" size="sm">{user.totalRestCount}休</Badge>
+                      <Badge variant="light" size="sm"
+                        color={user.gender === 'male' ? 'blue' : user.gender === 'female' ? 'pink' : 'gray'}
+                      >
+                        {user.gender === 'male' ? '男' : user.gender === 'female' ? '女' : '性別未設定'}
+                      </Badge>
                     </Group>
                     <Group gap="xs">
                       <ActionIcon variant="light" size="sm" onClick={() => openEditModal({ ...user, gender: user.gender ?? 'null' })}>
@@ -257,6 +262,11 @@ export default function UsersPage() {
                   <Group gap="xs">
                     <Badge variant="light" color="blue">{user.totalPlayCount}試合</Badge>
                     <Badge variant="light" color="gray">{user.totalRestCount}休</Badge>
+                    <Badge variant="light"
+                      color={user.gender === 'male' ? 'blue' : user.gender === 'female' ? 'pink' : 'gray'}
+                    >
+                      {user.gender === 'male' ? '男' : user.gender === 'female' ? '女' : '性別未設定'}
+                    </Badge>
                     <ActionIcon variant="light" onClick={() => openEditModal({ ...user, gender: user.gender ?? 'null' })}>
                       <IconPencil size={16} />
                     </ActionIcon>
