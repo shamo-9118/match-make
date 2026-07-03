@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Flex, Title, Button, Stack, Text, Modal, Avatar, Group, Card, Image } from '@mantine/core';
-import { IconSwords, IconUsers } from '@tabler/icons-react';
+import { IconSwords, IconUsers, IconUsersGroup } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/userStore';
 import { generateId } from '@/utils/id';
@@ -52,6 +52,9 @@ export default function HomePage() {
           </Button>
           <Button w="100%" size="xl" variant="light" leftSection={<IconUsers size={24} />} onClick={() => router.push('/users')}>
             ユーザー管理
+          </Button>
+          <Button w="100%" size="xl" variant="light" leftSection={<IconUsersGroup size={24} />} onClick={() => router.push('/teams')}>
+            チーム管理
           </Button>
         </Stack>
       </Flex>
