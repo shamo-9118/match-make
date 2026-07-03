@@ -2,8 +2,10 @@
 import { useState } from 'react';
 import {
   AppShell, Button, Group, Stack, Text, Card, Flex, Badge,
-  Avatar, Modal, Title, SimpleGrid, Paper, Divider,
+  Avatar, Modal, Title, SimpleGrid, Paper,
 } from '@mantine/core';
+
+const COURT_GREEN = '#2d7a3a';
 import { useRouter } from 'next/navigation';
 import { useTeamBattleSessionStore } from '@/store/teamBattleSessionStore';
 import { useUserStore } from '@/store/userStore';
@@ -72,13 +74,25 @@ export default function TeamSessionPage() {
 
   const getUser = (id: string) => users.find((u) => u.id === id);
 
+  // 個人戦の CourtCard と同スタイル（デスクトップ用）
   const PlayerChip = ({ id }: { id: string }) => {
     const u = getUser(id);
     return (
-      <Stack align="center" gap={4}>
-        <Avatar src={u?.imagePath} size={56} radius="xl" color={u?.color ?? 'gray'}>{u?.name[0] ?? '?'}</Avatar>
-        <Text size="sm" fw={600}>{u?.name ?? id}</Text>
+      <Stack align="center" gap={8}>
+        <Avatar src={u?.imagePath} size={80} radius="xl" color={u?.color ?? 'gray'}>{u?.name[0] ?? '?'}</Avatar>
+        <Text size="lg" fw={700} c="white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)' }}>{u?.name ?? id}</Text>
       </Stack>
+    );
+  };
+
+  // モバイル用コンパクト表示
+  const PlayerMobile = ({ id }: { id: string }) => {
+    const u = getUser(id);
+    return (
+      <Flex align="center" gap="xs" style={{ overflow: 'hidden' }}>
+        <Avatar src={u?.imagePath} size={40} radius="xl" color={u?.color ?? 'gray'} style={{ flexShrink: 0 }}>{u?.name[0] ?? '?'}</Avatar>
+        <Text size="md" fw={700} c="white" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.6)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u?.name ?? id}</Text>
+      </Flex>
     );
   };
 
@@ -124,12 +138,15 @@ export default function TeamSessionPage() {
             const remaining = matchesByCourt[courtNum].filter((m) => m.winnerTeamId === undefined).length;
 
             return (
-              <Card key={courtNum} withBorder radius="md" padding={0} style={{ overflow: 'hidden' }}>
-                {/* コートタイトル */}
-                <Flex bg="dark.7" px="md" py="xs" align="center" justify="space-between">
+              <Card key={courtNum} radius="md" padding={0} style={{ overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' }}>
+                {/* ヘッダー（個人戦と同色） */}
+                <Flex bg="#1a5c28" px="md" py="xs" align="center" justify="space-between">
                   <Text c="white" fw={700}>コート {courtNum}</Text>
-                  {!done && (
-                    <Badge variant="light" color="gray" size="sm">残り {remaining} 試合</Badge>
+                  {!done && current && (
+                    <Group gap="xs">
+                      <Badge variant="light" color="gray" size="sm">{pairTypeLabel(current.pairType)}</Badge>
+                      <Badge variant="light" color="gray" size="sm">残り {remaining}</Badge>
+                    </Group>
                   )}
                 </Flex>
 
@@ -138,69 +155,74 @@ export default function TeamSessionPage() {
                     <Text c="dimmed">全試合終了</Text>
                   </Flex>
                 ) : (
-                  <Stack gap={0} p="md">
-                    <Badge variant="light" color="gray" size="sm" mb="sm">
-                      試合 {current.matchNumber} / {pairTypeLabel(current.pairType)}
-                    </Badge>
+                  <>
+                    {/* モバイル: 縦レイアウト */}
+                    <Stack bg={COURT_GREEN} px="md" py="sm" gap="xs" hiddenFrom="sm">
+                      <Flex align="center" gap={6}>
+                        <Avatar src={teamA.logoPath} size={18} radius="sm">{teamA.name[0]}</Avatar>
+                        <Text size="xs" c="rgba(255,255,255,0.75)" fw={600}>{teamA.name}</Text>
+                      </Flex>
+                      <SimpleGrid cols={current.pairA.playerIds.length} spacing="xs">
+                        {current.pairA.playerIds.map((id) => <PlayerMobile key={id} id={id} />)}
+                      </SimpleGrid>
+                      <Flex align="center" gap="sm" my={2}>
+                        <Paper flex={1} h={2} bg="rgba(255,255,255,0.4)" radius="sm" />
+                        <Text c="white" fw={900} size="sm">VS</Text>
+                        <Paper flex={1} h={2} bg="rgba(255,255,255,0.4)" radius="sm" />
+                      </Flex>
+                      <SimpleGrid cols={current.pairB.playerIds.length} spacing="xs">
+                        {current.pairB.playerIds.map((id) => <PlayerMobile key={id} id={id} />)}
+                      </SimpleGrid>
+                      <Flex align="center" gap={6} justify="flex-end">
+                        <Text size="xs" c="rgba(255,255,255,0.75)" fw={600}>{teamB.name}</Text>
+                        <Avatar src={teamB.logoPath} size={18} radius="sm">{teamB.name[0]}</Avatar>
+                      </Flex>
+                    </Stack>
 
-                    {/* チームA ペア */}
-                    <Card withBorder radius="md" padding="sm" style={{ borderColor: 'var(--mantine-color-blue-3)' }}>
-                      <Flex align="center" gap="sm" justify="space-between">
-                        <Flex align="center" gap="xs">
-                          <Avatar src={teamA.logoPath} size={24} radius="sm">{teamA.name[0]}</Avatar>
-                          <Text size="sm" fw={600} c="blue">{teamA.name}</Text>
+                    {/* デスクトップ: 横レイアウト */}
+                    <Flex bg={COURT_GREEN} p="xl" align="center" justify="space-around" style={{ minHeight: 180 }} visibleFrom="sm">
+                      <Stack align="center" flex={1} gap="sm">
+                        <Flex align="center" gap={6}>
+                          <Avatar src={teamA.logoPath} size={20} radius="sm">{teamA.name[0]}</Avatar>
+                          <Text size="xs" c="rgba(255,255,255,0.75)" fw={600}>{teamA.name}</Text>
                         </Flex>
-                        <Group gap="sm">
+                        <Group gap="xl" justify="center">
                           {current.pairA.playerIds.map((id) => <PlayerChip key={id} id={id} />)}
                         </Group>
-                      </Flex>
-                    </Card>
+                      </Stack>
 
-                    <Flex align="center" justify="center" my="xs" gap="sm">
-                      <Paper flex={1} h={2} bg="gray.3" radius="sm" />
-                      <Text fw={900} c="dimmed" size="sm">VS</Text>
-                      <Paper flex={1} h={2} bg="gray.3" radius="sm" />
-                    </Flex>
+                      <Stack align="center" gap={4} mx="md">
+                        <Paper w={4} h={40} bg="rgba(255,255,255,0.7)" radius="sm" />
+                        <Text c="white" fw={900} size="lg">VS</Text>
+                        <Paper w={4} h={40} bg="rgba(255,255,255,0.7)" radius="sm" />
+                      </Stack>
 
-                    {/* チームB ペア */}
-                    <Card withBorder radius="md" padding="sm" style={{ borderColor: 'var(--mantine-color-orange-3)' }}>
-                      <Flex align="center" gap="sm" justify="space-between">
-                        <Flex align="center" gap="xs">
-                          <Avatar src={teamB.logoPath} size={24} radius="sm">{teamB.name[0]}</Avatar>
-                          <Text size="sm" fw={600} c="orange">{teamB.name}</Text>
-                        </Flex>
-                        <Group gap="sm">
+                      <Stack align="center" flex={1} gap="sm">
+                        <Group gap="xl" justify="center">
                           {current.pairB.playerIds.map((id) => <PlayerChip key={id} id={id} />)}
                         </Group>
-                      </Flex>
-                    </Card>
-
-                    <Divider my="sm" />
+                        <Flex align="center" gap={6}>
+                          <Text size="xs" c="rgba(255,255,255,0.75)" fw={600}>{teamB.name}</Text>
+                          <Avatar src={teamB.logoPath} size={20} radius="sm">{teamB.name[0]}</Avatar>
+                        </Flex>
+                      </Stack>
+                    </Flex>
 
                     {/* 結果入力 */}
-                    {current.winnerTeamId === undefined ? (
-                      <Stack gap="xs">
-                        <Text size="sm" c="dimmed" ta="center">勝者を選択</Text>
-                        <Group grow>
-                          <Button color="blue" variant="light" onClick={() => handleRecordResult(current.matchNumber, teamA.id)}>
-                            {teamA.name} 勝ち
-                          </Button>
-                          <Button color="orange" variant="light" onClick={() => handleRecordResult(current.matchNumber, teamB.id)}>
-                            {teamB.name} 勝ち
-                          </Button>
-                        </Group>
-                      </Stack>
-                    ) : (
-                      <Text ta="center" fw={700} c="green" size="sm">記録済み</Text>
-                    )}
-
-                    {/* 結果なしで次へ（結果記録後は自動的に次の試合が表示される） */}
-                    {current.winnerTeamId === undefined && (
-                      <Button mt="xs" variant="subtle" color="gray" size="xs" onClick={() => handleAdvance(courtNum)}>
+                    <Stack gap="xs" p="md">
+                      <Group grow>
+                        <Button color="blue" variant="light" onClick={() => handleRecordResult(current.matchNumber, teamA.id)}>
+                          {teamA.name} 勝ち
+                        </Button>
+                        <Button color="orange" variant="light" onClick={() => handleRecordResult(current.matchNumber, teamB.id)}>
+                          {teamB.name} 勝ち
+                        </Button>
+                      </Group>
+                      <Button variant="subtle" color="gray" size="xs" onClick={() => handleAdvance(courtNum)}>
                         結果なしで次へ
                       </Button>
-                    )}
-                  </Stack>
+                    </Stack>
+                  </>
                 )}
               </Card>
             );
