@@ -34,7 +34,7 @@ export default function UsersPage() {
 
   // QRスキャナー
   const [scanOpened, setScanOpened] = useState(false);
-  const [importUsers, setImportUsers] = useState<{ name: string; color: string }[]>([]);
+  const [importUsers, setImportUsers] = useState<{ name: string; color: string; gender?: string }[]>([]);
   const [scanError, setScanError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -117,7 +117,10 @@ export default function UsersPage() {
     importUsers.forEach((u) => {
       const id = generateId();
       addUser({ id, name: u.name });
-      updateUser(id, { color: u.color });
+      updateUser(id, {
+        color: u.color,
+        gender: u.gender === 'male' || u.gender === 'female' ? u.gender : null,
+      });
     });
     handleScanClose();
   };
@@ -132,7 +135,7 @@ export default function UsersPage() {
 
   const generateQr = () => {
     const selected = users.filter((u) => selectedShareIds.has(u.id));
-    const data = selected.map((u) => ({ name: u.name, color: u.color }));
+    const data = selected.map((u) => ({ name: u.name, color: u.color, gender: u.gender }));
     const encoded = btoa(encodeURIComponent(JSON.stringify(data)));
     const url = `${window.location.origin}/?import=${encoded}`;
     setQrUrl(url);

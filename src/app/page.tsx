@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/userStore';
 import { generateId } from '@/utils/id';
 
-type ImportUser = { name: string; color: string };
+type ImportUser = { name: string; color: string; gender?: string };
 
 export default function HomePage() {
   const router = useRouter();
@@ -33,7 +33,10 @@ export default function HomePage() {
     importUsers.forEach((u) => {
       const id = generateId();
       addUser({ id, name: u.name });
-      updateUser(id, { color: u.color });
+      updateUser(id, {
+        color: u.color,
+        gender: u.gender === 'male' || u.gender === 'female' ? u.gender : null,
+      });
     });
     setImportOpened(false);
   };
