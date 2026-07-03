@@ -157,16 +157,15 @@ export function generateTeamBattleMatches(
   const pairsA = formPairs(teamAMemberIds, users, composition);
   const pairsB = formPairs(teamBMemberIds, users, composition);
 
-  // pairType ごとに対戦カードを組む
-  const matchCards: { pairType: PairType; pairA: string[]; pairB: string[] }[] = [];
-  const usedB: boolean[] = Array(pairsB.length).fill(false);
-
-  for (const pa of pairsA) {
-    const idx = pairsB.findIndex((pb, i) => !usedB[i] && pb.pairType === pa.pairType);
-    if (idx === -1) continue;
-    usedB[idx] = true;
-    matchCards.push({ pairType: pa.pairType, pairA: pa.playerIds, pairB: pairsB[idx].playerIds });
-  }
+  // 同じインデックスのペア同士で対戦カードを組む。
+  // pairTypeA と pairTypeB は異なっていても許容する（運用上ペアタイプが一致しない対戦が発生するため）。
+  const count = Math.min(pairsA.length, pairsB.length);
+  const matchCards = Array.from({ length: count }, (_, i) => ({
+    pairTypeA: pairsA[i].pairType,
+    pairTypeB: pairsB[i].pairType,
+    pairA: pairsA[i].playerIds,
+    pairB: pairsB[i].playerIds,
+  }));
 
   // 試合順をシャッフル
   const shuffledCards = shuffle(matchCards);
@@ -175,7 +174,8 @@ export function generateTeamBattleMatches(
   return shuffledCards.map((card, i) => ({
     matchNumber: i + 1,
     courtNumber: (i % courtCount) + 1,
-    pairType: card.pairType,
+    pairTypeA: card.pairTypeA,
+    pairTypeB: card.pairTypeB,
     pairA: { playerIds: card.pairA, teamId: teamAId },
     pairB: { playerIds: card.pairB, teamId: teamBId },
   }));

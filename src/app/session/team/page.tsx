@@ -100,6 +100,11 @@ export default function TeamSessionPage() {
   const pairTypeLabel = (type: string) =>
     ({ mens: '男子', womens: '女子', mixed: 'ミックス', singles: 'シングルス' }[type] ?? type);
 
+  const matchTypeLabel = (match: { pairTypeA: string; pairTypeB: string }) =>
+    match.pairTypeA === match.pairTypeB
+      ? pairTypeLabel(match.pairTypeA)
+      : `${pairTypeLabel(match.pairTypeA)} vs ${pairTypeLabel(match.pairTypeB)}`;
+
   const resultLabel = allDone
     ? winsA > winsB ? `${teamA.name} 勝利！` : winsA < winsB ? `${teamB.name} 勝利！` : '引き分け'
     : null;
@@ -145,7 +150,7 @@ export default function TeamSessionPage() {
                   <Text c="white" fw={700}>コート {courtNum}</Text>
                   {!done && current && (
                     <Group gap="xs">
-                      <Badge variant="light" color="gray" size="sm">{pairTypeLabel(current.pairType)}</Badge>
+                      <Badge variant="light" color="gray" size="sm">{matchTypeLabel(current)}</Badge>
                       <Badge variant="light" color="gray" size="sm">残り {remaining}</Badge>
                     </Group>
                   )}
@@ -257,15 +262,15 @@ export default function TeamSessionPage() {
             <Title order={2} c="gray">引き分け</Title>
           )}
           <SimpleGrid cols={2} w="100%">
-            <Stack align="center" gap={8}>
-              <Avatar src={teamA.logoPath} size={96} radius="md">{teamA.name[0]}</Avatar>
-              <Text size="xl" fw={700}>{teamA.name}</Text>
-              <Text size="2xl" fw={900} c="blue">{winsA} 勝</Text>
+            <Stack align="center" gap={10}>
+              <Avatar src={teamA.logoPath} size={120} radius="md">{teamA.name[0]}</Avatar>
+              <Text size="2xl" fw={700}>{teamA.name}</Text>
+              <Text fw={900} c="blue" style={{ fontSize: '2.5rem' }}>{winsA} 勝</Text>
             </Stack>
-            <Stack align="center" gap={8}>
-              <Avatar src={teamB.logoPath} size={96} radius="md">{teamB.name[0]}</Avatar>
-              <Text size="xl" fw={700}>{teamB.name}</Text>
-              <Text size="2xl" fw={900} c="orange">{winsB} 勝</Text>
+            <Stack align="center" gap={10}>
+              <Avatar src={teamB.logoPath} size={120} radius="md">{teamB.name[0]}</Avatar>
+              <Text size="2xl" fw={700}>{teamB.name}</Text>
+              <Text fw={900} c="orange" style={{ fontSize: '2.5rem' }}>{winsB} 勝</Text>
             </Stack>
           </SimpleGrid>
           <Button fullWidth color="gray" variant="light" onClick={() => { endSession(); router.push('/'); }}>

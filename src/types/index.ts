@@ -32,7 +32,8 @@ export interface Team {
 export interface TeamBattleMatch {
   matchNumber: number;   // 全体の試合番号（1始まり）
   courtNumber: number;   // 担当コート番号
-  pairType: PairType;
+  pairTypeA: PairType;  // チームAのペア種別（異なるペアタイプ同士の対戦も許容）
+  pairTypeB: PairType;  // チームBのペア種別
   pairA: { playerIds: string[]; teamId: string }; // チームAのペア
   pairB: { playerIds: string[]; teamId: string }; // チームBのペア
   winnerTeamId?: string | null; // 勝利チームID（未記録は undefined、結果なしスキップは null）

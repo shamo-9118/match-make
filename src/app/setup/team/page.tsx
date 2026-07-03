@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import {
   AppShell, Title, Button, Group, Stack, Avatar, Text, Card,
-  Flex, SimpleGrid, TextInput, Modal, NumberInput, Badge,
+  Flex, SimpleGrid, TextInput, Modal, Badge,
   Checkbox, Alert, SegmentedControl, Divider,
 } from '@mantine/core';
 import { IconPlus, IconPencil, IconTrash, IconAlertCircle } from '@tabler/icons-react';
@@ -316,29 +316,59 @@ export default function TeamSetupPage() {
             <Stack gap="md">
               <Title order={4}>ペア数・コート数</Title>
               <Card withBorder radius="md" padding="md">
-                <Stack gap="md">
-                  <NumberInput
-                    label="ペア数（試合数）"
-                    description="奇数推奨（引き分けが発生しない）"
-                    value={totalPairs} min={1} max={9}
-                    onChange={(v) => setTotalPairs(Number(v))}
-                  />
-                  {isEvenPairs && (
-                    <Alert icon={<IconAlertCircle size={16} />} color="yellow" variant="light">
-                      ペア数が偶数のため引き分けが発生する可能性があります
-                    </Alert>
-                  )}
-                  <NumberInput
-                    label="シングルス枠"
-                    description="ダブルス以外の1対1試合の数"
-                    value={singlesPairs} min={0} max={totalPairs}
-                    onChange={(v) => setSinglesPairs(Math.min(Number(v), totalPairs))}
-                  />
-                  <NumberInput
-                    label="コート数"
-                    value={courtCount} min={1} max={4}
-                    onChange={(v) => setCourtCount(Number(v))}
-                  />
+                <Stack gap="xl">
+                  {/* ペア数 */}
+                  <Stack gap={6}>
+                    <Text fw={600}>ペア数（試合数）</Text>
+                    <Text size="xs" c="dimmed">奇数推奨（引き分けが発生しない）</Text>
+                    <Group gap={0} align="center">
+                      <Button variant="default" size="xl" w={64} px={0} fz="xl" fw={900}
+                        disabled={totalPairs <= 1}
+                        onClick={() => setTotalPairs(totalPairs - 1)}>−</Button>
+                      <Text fw={900} ta="center" style={{ fontSize: '2.5rem', minWidth: 72 }}>{totalPairs}</Text>
+                      <Button variant="default" size="xl" w={64} px={0} fz="xl" fw={900}
+                        disabled={totalPairs >= 9}
+                        onClick={() => setTotalPairs(totalPairs + 1)}>+</Button>
+                    </Group>
+                    {isEvenPairs && (
+                      <Alert icon={<IconAlertCircle size={16} />} color="yellow" variant="light">
+                        ペア数が偶数のため引き分けが発生する可能性があります
+                      </Alert>
+                    )}
+                  </Stack>
+
+                  <Divider />
+
+                  {/* シングルス枠 */}
+                  <Stack gap={6}>
+                    <Text fw={600}>シングルス枠</Text>
+                    <Text size="xs" c="dimmed">ダブルス以外の1対1試合の数</Text>
+                    <Group gap={0} align="center">
+                      <Button variant="default" size="xl" w={64} px={0} fz="xl" fw={900}
+                        disabled={singlesPairs <= 0}
+                        onClick={() => setSinglesPairs(singlesPairs - 1)}>−</Button>
+                      <Text fw={900} ta="center" style={{ fontSize: '2.5rem', minWidth: 72 }}>{singlesPairs}</Text>
+                      <Button variant="default" size="xl" w={64} px={0} fz="xl" fw={900}
+                        disabled={singlesPairs >= totalPairs}
+                        onClick={() => setSinglesPairs(singlesPairs + 1)}>+</Button>
+                    </Group>
+                  </Stack>
+
+                  <Divider />
+
+                  {/* コート数 */}
+                  <Stack gap={6}>
+                    <Text fw={600}>コート数</Text>
+                    <Group gap={0} align="center">
+                      <Button variant="default" size="xl" w={64} px={0} fz="xl" fw={900}
+                        disabled={courtCount <= 1}
+                        onClick={() => setCourtCount(courtCount - 1)}>−</Button>
+                      <Text fw={900} ta="center" style={{ fontSize: '2.5rem', minWidth: 72 }}>{courtCount}</Text>
+                      <Button variant="default" size="xl" w={64} px={0} fz="xl" fw={900}
+                        disabled={courtCount >= 4}
+                        onClick={() => setCourtCount(courtCount + 1)}>+</Button>
+                    </Group>
+                  </Stack>
                 </Stack>
               </Card>
 
