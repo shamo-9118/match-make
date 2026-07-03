@@ -11,6 +11,7 @@ import { useTeamBattleSessionStore } from '@/store/teamBattleSessionStore';
 import { useUserStore } from '@/store/userStore';
 import { applyTeamBattleMatchToUsers } from '@/utils/teamBattleAlgorithm';
 import { TeamBattleMatch } from '@/types';
+import Confetti from '@/components/Confetti';
 
 export default function TeamSessionPage() {
   const router = useRouter();
@@ -242,20 +243,29 @@ export default function TeamSessionPage() {
         </Flex>
       </AppShell.Footer>
 
+      {/* 花ふぶきアニメーション（勝利時のみ） */}
+      {resultOpened && winsA !== winsB && <Confetti />}
+
       {/* 結果モーダル */}
       <Modal opened={resultOpened} onClose={() => setResultOpened(false)} centered size="sm" withCloseButton={false}>
         <Stack align="center" gap="lg" py="md">
-          <Title order={2} c={resultColor}>{resultLabel}</Title>
+          {winsA !== winsB ? (
+            /* 勝利：トロフィー画像 */
+            <img src="/victory-icon.png" alt="勝利！" style={{ width: 180, height: 180, objectFit: 'contain' }} />
+          ) : (
+            /* 引き分け：テキスト */
+            <Title order={2} c="gray">引き分け</Title>
+          )}
           <SimpleGrid cols={2} w="100%">
-            <Stack align="center" gap={4}>
-              <Avatar src={teamA.logoPath} size={64} radius="md">{teamA.name[0]}</Avatar>
-              <Text fw={700}>{teamA.name}</Text>
-              <Text size="xl" fw={900} c="blue">{winsA} 勝</Text>
+            <Stack align="center" gap={8}>
+              <Avatar src={teamA.logoPath} size={96} radius="md">{teamA.name[0]}</Avatar>
+              <Text size="xl" fw={700}>{teamA.name}</Text>
+              <Text size="2xl" fw={900} c="blue">{winsA} 勝</Text>
             </Stack>
-            <Stack align="center" gap={4}>
-              <Avatar src={teamB.logoPath} size={64} radius="md">{teamB.name[0]}</Avatar>
-              <Text fw={700}>{teamB.name}</Text>
-              <Text size="xl" fw={900} c="orange">{winsB} 勝</Text>
+            <Stack align="center" gap={8}>
+              <Avatar src={teamB.logoPath} size={96} radius="md">{teamB.name[0]}</Avatar>
+              <Text size="xl" fw={700}>{teamB.name}</Text>
+              <Text size="2xl" fw={900} c="orange">{winsB} 勝</Text>
             </Stack>
           </SimpleGrid>
           <Button fullWidth color="gray" variant="light" onClick={() => { endSession(); router.push('/'); }}>
