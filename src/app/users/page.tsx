@@ -249,6 +249,9 @@ export default function UsersPage() {
                   </Flex>
                   <Flex justify="space-between" align="center">
                     <Group gap="xs">
+                      <Badge variant="light" color={user.source === 'sheet' ? 'green' : 'yellow'} size="sm">
+                        {user.source === 'sheet' ? 'スプシ' : 'ローカル'}
+                      </Badge>
                       <Badge variant="light" color="blue" size="sm">{user.totalPlayCount}試合</Badge>
                       <Badge variant="light" color="gray" size="sm">{user.totalRestCount}休</Badge>
                       <Badge variant="light" size="sm"
@@ -279,6 +282,9 @@ export default function UsersPage() {
                   </Avatar>
                   <Text flex={1} fw={500} size="lg">{user.name}</Text>
                   <Group gap="xs">
+                    <Badge variant="light" color={user.source === 'sheet' ? 'green' : 'yellow'}>
+                      {user.source === 'sheet' ? 'スプシ' : 'ローカル'}
+                    </Badge>
                     <Badge variant="light" color="blue">{user.totalPlayCount}試合</Badge>
                     <Badge variant="light" color="gray">{user.totalRestCount}休</Badge>
                     <Badge variant="light"

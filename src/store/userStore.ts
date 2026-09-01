@@ -6,7 +6,7 @@ import { pickColor } from '@/utils/colors';
 
 interface UserStore {
   users: User[];
-  addUser: (user: Omit<User, 'color' | 'gender' | 'createdAt' | 'synced' | 'archived' | 'totalPlayCount' | 'totalRestCount' | 'pairHistory' | 'opponentHistory' | 'teamBattlePairHistory' | 'teamBattleOpponentHistory'>) => void;
+  addUser: (user: Omit<User, 'color' | 'gender' | 'createdAt' | 'synced' | 'archived' | 'source' | 'totalPlayCount' | 'totalRestCount' | 'pairHistory' | 'opponentHistory' | 'teamBattlePairHistory' | 'teamBattleOpponentHistory'>) => void;
   updateUser: (id: string, updates: Partial<Pick<User, 'name' | 'imagePath' | 'color' | 'gender'>>) => void;
   deleteUser: (id: string) => void;
   updateUserStats: (updatedUsers: User[]) => void;
@@ -31,6 +31,7 @@ export const useUserStore = create<UserStore>()(
           createdAt: new Date().toISOString(),
           synced: false,
           archived: false,
+          source: 'local',
           totalPlayCount: 0,
           totalRestCount: 0,
           pairHistory: {},
@@ -101,6 +102,7 @@ export const useUserStore = create<UserStore>()(
             createdAt: rm.createdAt,
             synced: true,
             archived: rm.archived ?? false,
+            source: 'sheet',
             totalPlayCount: 0,
             totalRestCount: 0,
             pairHistory: {},
@@ -138,7 +140,7 @@ export const useUserStore = create<UserStore>()(
     }),
     {
       name: 'match-make:users',
-      version: 3,
+      version: 4,
       migrate: (persistedState: unknown) => {
         const state = persistedState as { users: User[] };
         const migratedUsers: User[] = [];
@@ -150,6 +152,7 @@ export const useUserStore = create<UserStore>()(
             createdAt: u.createdAt ?? new Date().toISOString(),
             synced: u.synced ?? false,
             archived: u.archived ?? false,
+            source: u.source ?? 'local',
             teamBattlePairHistory: u.teamBattlePairHistory ?? {},
             teamBattleOpponentHistory: u.teamBattleOpponentHistory ?? {},
           });
