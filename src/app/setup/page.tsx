@@ -13,7 +13,8 @@ import { generateRound } from '@/utils/algorithm';
 
 export default function SetupPage() {
   const router = useRouter();
-  const { users, resetAllStats } = useUserStore();
+  const { users: allUsers, resetAllStats } = useUserStore();
+  const users = allUsers.filter((u) => !u.archived);
   const { startSession, setNextRound } = useSessionStore();
 
   const [courtCount, setCourtCount] = useState(2);
@@ -39,7 +40,7 @@ export default function SetupPage() {
     const participantIds = [...selectedIds];
     startSession(courtCount, gameFormat, participantIds);
     const participants = users.filter((u) => participantIds.includes(u.id));
-    const firstRound = generateRound(participants, courtCount, gameFormat, null, 0);
+    const firstRound = generateRound(participants, courtCount, gameFormat, [], 0);
     setNextRound(firstRound);
     router.push('/session');
   };

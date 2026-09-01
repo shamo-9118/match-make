@@ -11,6 +11,9 @@ export interface User {
   imagePath?: string;
   color: string; // アバターカラー（写真未設定時に使用）
   gender: Gender;
+  createdAt: string;   // ISO8601（スプレッドシート同期用）
+  synced: boolean;     // スプレッドシート同期済みか
+  archived: boolean;   // アーカイブ済み（論理削除）
   // 個人戦セッション内カウント（個人戦リセットでクリア）
   totalPlayCount: number;
   totalRestCount: number;

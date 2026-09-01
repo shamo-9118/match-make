@@ -34,10 +34,11 @@ export default function SessionPage() {
   const isViewing = session ? session.currentRoundIndex < session.latestRoundIndex : false;
   const currentRound: Round | null = session ? session.rounds[session.currentRoundIndex] ?? null : null;
 
-  const scheduleNextRound = (afterRound: Round, updatedUsers: User[], participantIds: string[]) => {
+  const scheduleNextRound = (confirmedRounds: Round[], updatedUsers: User[], participantIds: string[]) => {
     const participants = updatedUsers.filter((u) => participantIds.includes(u.id));
     setTimeout(() => {
-      const next = generateRound(participants, session!.courtCount, session!.gameFormat, afterRound, afterRound.index + 1);
+      const nextIndex = confirmedRounds.length > 0 ? confirmedRounds[confirmedRounds.length - 1].index + 1 : 0;
+      const next = generateRound(participants, session!.courtCount, session!.gameFormat, confirmedRounds, nextIndex);
       setNextRound(next);
     }, 0);
   };
@@ -49,8 +50,11 @@ export default function SessionPage() {
     exitCurrentSwapMode();
     const updatedUsers = applyRoundToUsers(session.nextRound, users);
     updateUserStats(updatedUsers);
+    // confirmNextRound は nextRound を rounds に追加するが、zustand の更新は非同期反映のため
+    // 確定後のラウンド配列を先に構築して scheduleNextRound に渡す
+    const confirmedRounds = [...session.rounds, session.nextRound].slice(-50);
     confirmNextRound();
-    scheduleNextRound(session.nextRound, updatedUsers, session.participantIds);
+    scheduleNextRound(confirmedRounds, updatedUsers, session.participantIds);
   };
 
   const openEditUser = (user: User) => {
@@ -98,7 +102,12 @@ export default function SessionPage() {
       updateUserStats(updated);
       clearNextRound();
       swapCurrentRoundPlayers(idA, idB);
-      scheduleNextRound(newRound, updated, session!.participantIds);
+      // swapCurrentRoundPlayers は store 側で rounds を更新するが、zustand の反映前なので
+      // ローカルで確定済みラウンド配列を構築する
+      const confirmedRounds = session!.rounds.map((r, i) =>
+        i === session!.currentRoundIndex ? newRound : r,
+      );
+      scheduleNextRound(confirmedRounds, updated, session!.participantIds);
       setSelectedCurrentSwapId(null);
       setCurrentSwapMode(false);
     }
@@ -140,7 +149,7 @@ export default function SessionPage() {
       updateParticipants(updatedParticipantIds);
     }
     if (session.rounds.length > 0) {
-      scheduleNextRound(session.rounds[session.latestRoundIndex], updatedUsers, updatedParticipantIds);
+      scheduleNextRound(session.rounds, updatedUsers, updatedParticipantIds);
     }
   };
 

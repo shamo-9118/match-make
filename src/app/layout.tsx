@@ -3,6 +3,7 @@ import { ColorSchemeScript, MantineProvider } from '@mantine/core';
 import '@mantine/core/styles.css';
 import './globals.css';
 import { SwRegister } from './sw-register';
+import { AutoSync } from './auto-sync';
 
 export const metadata: Metadata = {
   title: 'match-make',
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <MantineProvider>
           <SwRegister />
+          <AutoSync />
           {children}
         </MantineProvider>
       </body>

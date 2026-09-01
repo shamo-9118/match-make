@@ -17,7 +17,8 @@ type Step = 'team-select' | 'members' | 'pairs' | 'composition';
 
 export default function TeamSetupPage() {
   const router = useRouter();
-  const { users } = useUserStore();
+  const { users: allUsers } = useUserStore();
+  const users = allUsers.filter((u) => !u.archived);
   const { teams, addTeam, updateTeam, deleteTeam } = useTeamStore();
   const { startSession } = useTeamBattleSessionStore();
 

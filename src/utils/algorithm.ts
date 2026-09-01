@@ -10,6 +10,53 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
+/**
+ * 各参加者が「何ラウンド前に最後に休んだか」を返す。
+ * - 過去ラウンドに一度も登場しない（途中参加者）→ 0（直後にプレイさせる）
+ * - 一度も休んでいない（開始から出場し続けている）→ pastRounds.length + 1
+ */
+function getRoundsSinceLastRest(
+  userId: string,
+  pastRounds: Round[],
+): number {
+  let everAppeared = false;
+  for (let i = pastRounds.length - 1; i >= 0; i--) {
+    if (pastRounds[i].restingPlayerIds.includes(userId)) {
+      return pastRounds.length - i;
+    }
+    const r = pastRounds[i];
+    if (r.courts.some((c) => c.teamA.includes(userId) || c.teamB.includes(userId))) {
+      everAppeared = true;
+    }
+  }
+  if (!everAppeared) return 0; // 途中参加者: "直後にプレイ" のため低重み
+  return pastRounds.length + 1; // 開始から一度も休んでいない
+}
+
+/**
+ * 重み付きランダムで count 人を選ぶ（非復元抽出）。
+ * weight が高い人ほど選ばれやすいが、確定ではない → グループ固定化を防ぐ。
+ */
+function weightedRandomPick(
+  pool: { id: string; weight: number }[],
+  count: number,
+): string[] {
+  const result: string[] = [];
+  const remaining = [...pool];
+  for (let i = 0; i < count && remaining.length > 0; i++) {
+    const totalWeight = remaining.reduce((s, p) => s + p.weight, 0);
+    let r = Math.random() * totalWeight;
+    let picked = remaining.length - 1;
+    for (let j = 0; j < remaining.length; j++) {
+      r -= remaining[j].weight;
+      if (r <= 0) { picked = j; break; }
+    }
+    result.push(remaining[picked].id);
+    remaining.splice(picked, 1);
+  }
+  return result;
+}
+
 /** 全プレーヤーを2人ずつのペアに分ける全パターンを生成（完全マッチング） */
 function perfectMatchings(players: string[]): [string, string][][] {
   if (players.length === 0) return [[]];
@@ -133,66 +180,56 @@ function scoreOpponents(
  * @param participants 現在の参加者
  * @param courtCount コート数
  * @param gameFormat シングルス or ダブルス
- * @param prevRound 直前のラウンド（初回はnull）
+ * @param pastRounds 確定済みラウンドの配列（古い順）
  * @param roundIndex ラウンドインデックス
  */
 export function generateRound(
   participants: User[],
   courtCount: number,
   gameFormat: GameFormat,
-  prevRound: Round | null,
+  pastRounds: Round[],
   roundIndex: number,
 ): Round {
   const playersPerCourt = gameFormat === 'doubles' ? 4 : 2;
   const totalPlaying = courtCount * playersPerCourt;
   const restCount = Math.max(0, participants.length - totalPlaying);
-  const prevRestingIds = prevRound?.restingPlayerIds ?? [];
+  const prevRound = pastRounds.length > 0 ? pastRounds[pastRounds.length - 1] : null;
   const prevPairKeys = getPrevPairKeys(prevRound);
   const prevOpponentKeys = getPrevOpponentKeys(prevRound);
 
   // --- Step1: 休憩者の選定 ---
-  let restingPlayers: User[] = [];
+  // 方針: セッション全体で休憩回数の帳尻が合えばよい（局所的な借金は許容）。
+  // totalRestCount の上限（MAX_DEBT）内で、roundsSinceLastRest に基づく
+  // 重み付きランダムで選出し、グループ固定化を防ぐ。
+  let restingIds: string[] = [];
 
   if (restCount > 0) {
-    const sorted = [...participants].sort((a, b) => {
-      if (a.totalRestCount !== b.totalRestCount) return a.totalRestCount - b.totalRestCount;
-      const aRested = prevRestingIds.includes(a.id) ? 1 : 0;
-      const bRested = prevRestingIds.includes(b.id) ? 1 : 0;
-      return aRested - bRested;
-    });
+    const MAX_DEBT = 1;
+    const minRestCount = Math.min(...participants.map((u) => u.totalRestCount));
+    const lastRoundRestIds = prevRound?.restingPlayerIds ?? [];
 
-    const minRest = sorted[0].totalRestCount;
-    const minGroup = sorted.filter((u) => u.totalRestCount === minRest && !prevRestingIds.includes(u.id));
-    const fallback = sorted.filter((u) => u.totalRestCount === minRest && prevRestingIds.includes(u.id));
-    const candidates = minGroup.length > 0 ? minGroup : fallback;
-
-    restingPlayers = shuffle(candidates).slice(0, restCount);
-
-    if (restingPlayers.length < restCount) {
-      const pickedIds = new Set(restingPlayers.map((u) => u.id));
-      const remaining = sorted.filter((u) => !pickedIds.has(u.id));
-
-      // 同じ優先度（restCount・前回休憩有無）内でシャッフルして登録順バイアスを除去
-      const shuffledRemaining: User[] = [];
-      let i = 0;
-      while (i < remaining.length) {
-        let j = i + 1;
-        while (
-          j < remaining.length &&
-          remaining[j].totalRestCount === remaining[i].totalRestCount &&
-          prevRestingIds.includes(remaining[j].id) === prevRestingIds.includes(remaining[i].id)
-        ) {
-          j++;
-        }
-        shuffledRemaining.push(...shuffle(remaining.slice(i, j)));
-        i = j;
-      }
-
-      restingPlayers = [...restingPlayers, ...shuffledRemaining.slice(0, restCount - restingPlayers.length)];
+    // 候補プール構築: 債務上限内 → 直前ラウンドで休んでない人を優先
+    let eligible = participants.filter(
+      (u) => u.totalRestCount <= minRestCount + MAX_DEBT && !lastRoundRestIds.includes(u.id),
+    );
+    // 候補不足なら直前ラウンド制約を緩和
+    if (eligible.length < restCount) {
+      eligible = participants.filter((u) => u.totalRestCount <= minRestCount + MAX_DEBT);
     }
+    // それでも不足なら債務制約も緩和
+    if (eligible.length < restCount) {
+      eligible = [...participants].sort((a, b) => a.totalRestCount - b.totalRestCount);
+    }
+
+    // 重み = roundsSinceLastRest（長くプレイした人ほど休みやすい、ただし確率的）
+    const pool = eligible.map((u) => ({
+      id: u.id,
+      weight: Math.max(1, getRoundsSinceLastRest(u.id, pastRounds)),
+    }));
+
+    restingIds = weightedRandomPick(pool, restCount);
   }
 
-  const restingIds = restingPlayers.map((u) => u.id);
   const playing = participants.filter((u) => !restingIds.includes(u.id)).map((u) => u.id);
 
   // --- Step2 & 3: コート割り当て ---

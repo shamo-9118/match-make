@@ -7,16 +7,18 @@ import {
   Burger, Drawer, SegmentedControl,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconPlus, IconTrash, IconPencil } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconPencil, IconRefresh } from '@tabler/icons-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/userStore';
+import { fullSync } from '@/lib/sync';
 import { generateId } from '@/utils/id';
 import { USER_COLORS } from '@/utils/colors';
 
 export default function UsersPage() {
   const router = useRouter();
-  const { users, addUser, updateUser, deleteUser, resetAllStats, resetTeamBattleStats } = useUserStore();
+  const { users: allUsers, addUser, updateUser, deleteUser, resetAllStats, resetTeamBattleStats } = useUserStore();
+  const users = allUsers.filter((u) => !u.archived);
   const [name, setName] = useState('');
   const [editModalUser, setEditModalUser] = useState<{ id: string; name: string; color: string; gender: string } | null>(null);
   const [editModalName, setEditModalName] = useState('');
@@ -31,6 +33,7 @@ export default function UsersPage() {
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   // QRスキャナー
   const [scanOpened, setScanOpened] = useState(false);
@@ -176,6 +179,18 @@ export default function UsersPage() {
     setEditModalUser(null);
   };
 
+  const handleSync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      await fullSync();
+    } catch (e) {
+      console.error('Sync failed', e);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handleReset = () => {
     resetAllStats();
     closeReset();
@@ -190,6 +205,7 @@ export default function UsersPage() {
 
           {/* PC */}
           <Group gap="xs" visibleFrom="md">
+            <Button variant="light" color="teal" onClick={handleSync} loading={syncing} leftSection={<IconRefresh size={16} />}>同期</Button>
             <Button variant="light" onClick={openScanner}>インポート</Button>
             <Button variant="light" onClick={openShare}>共有</Button>
             <Button color="orange" variant="light" onClick={openResetTeamBattle}>団体戦統計リセット</Button>
@@ -343,6 +359,7 @@ export default function UsersPage() {
 
       <Drawer opened={menuOpened} onClose={closeMenu} position="right" size="xs" title="メニュー">
         <Stack gap="sm">
+          <Button fullWidth variant="light" color="teal" onClick={() => { handleSync(); closeMenu(); }} loading={syncing} leftSection={<IconRefresh size={16} />}>同期</Button>
           <Button fullWidth variant="light" onClick={() => { openScanner(); closeMenu(); }}>インポート</Button>
           <Button fullWidth variant="light" onClick={() => { openShare(); closeMenu(); }}>共有</Button>
           <Button fullWidth color="orange" variant="light" onClick={() => { openResetTeamBattle(); closeMenu(); }}>団体戦統計リセット</Button>
