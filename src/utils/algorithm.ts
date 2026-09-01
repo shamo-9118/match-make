@@ -57,7 +57,7 @@ function weightedRandomPick(
   return result;
 }
 
-/** 全プレーヤーを2人ずつのペアに分ける全パターンを生成（完全マッチング） */
+/** 全プレーヤーを2人ずつのペアに分ける全パターンを生成（完全マッチング）— 少人数用 */
 function perfectMatchings(players: string[]): [string, string][][] {
   if (players.length === 0) return [[]];
   const [first, ...rest] = players;
@@ -72,7 +72,7 @@ function perfectMatchings(players: string[]): [string, string][][] {
   return result;
 }
 
-/** ペアのリストをコートに2ペアずつ割り当てる全パターンを生成 */
+/** ペアのリストをコートに2ペアずつ割り当てる全パターンを生成 — 少人数用 */
 function courtGroupingsOfPairs(
   pairs: [string, string][],
   courtCount: number,
@@ -89,6 +89,80 @@ function courtGroupingsOfPairs(
   }
   return result;
 }
+
+// --- 大人数向けサンプリング方式 ---
+
+/** プレイヤーをシャッフルして隣接ペアにする（ランダムな完全マッチング1つ） */
+function randomMatching(players: string[]): [string, string][] {
+  const shuffled = shuffle(players);
+  const pairs: [string, string][] = [];
+  for (let i = 0; i < shuffled.length; i += 2) {
+    pairs.push([shuffled[i], shuffled[i + 1]]);
+  }
+  return pairs;
+}
+
+/** 大人数時にサンプリングで最良のペアマッチングを選ぶ */
+const SAMPLE_COUNT = 3000;
+
+function sampleBestMatching(
+  playing: string[],
+  users: User[],
+  prevPairKeys: Set<string>,
+  prevOpponentKeys: Set<string>,
+): [string, string][] {
+  let best = randomMatching(playing);
+  let bestPairScore = scorePairMatching(best, users, prevPairKeys);
+  let bestTiebreaker = opponentTiebreakerScore(best, users, prevOpponentKeys);
+
+  for (let i = 1; i < SAMPLE_COUNT; i++) {
+    const m = randomMatching(playing);
+    const ps = scorePairMatching(m, users, prevPairKeys);
+    const tb = opponentTiebreakerScore(m, users, prevOpponentKeys);
+    if (ps < bestPairScore || (ps === bestPairScore && tb < bestTiebreaker)) {
+      best = m;
+      bestPairScore = ps;
+      bestTiebreaker = tb;
+    }
+  }
+  return best;
+}
+
+/** 大人数時にサンプリングで最良のコート割り当てを選ぶ */
+function sampleBestCourtGrouping(
+  pairs: [string, string][],
+  courtCount: number,
+  users: User[],
+  prevOpponentKeys: Set<string>,
+): [[string, string], [string, string]][] {
+  const genRandom = (): [[string, string], [string, string]][] => {
+    const shuffled = shuffle(pairs);
+    const groups: [[string, string], [string, string]][] = [];
+    for (let i = 0; i < courtCount; i++) {
+      groups.push([shuffled[i * 2], shuffled[i * 2 + 1]]);
+    }
+    return groups;
+  };
+
+  const scoreFn = (g: [[string, string], [string, string]][]) =>
+    g.reduce((sum, [pA, pB]) => sum + scoreOpponents([...pA], [...pB], users, prevOpponentKeys), 0);
+
+  let best = genRandom();
+  let bestScore = scoreFn(best);
+
+  for (let i = 1; i < SAMPLE_COUNT; i++) {
+    const g = genRandom();
+    const s = scoreFn(g);
+    if (s < bestScore) {
+      best = g;
+      bestScore = s;
+    }
+  }
+  return best;
+}
+
+/** プレイ人数が多い場合にサンプリング方式を使うかの閾値 */
+const EXHAUSTIVE_THRESHOLD = 10;
 
 const PAIR_WEIGHT = 3;
 const CONSECUTIVE_PAIR_PENALTY = 50;
@@ -236,30 +310,35 @@ export function generateRound(
   let courts: Court[];
 
   if (gameFormat === 'doubles') {
-    // Step2: 全完全マッチングを列挙し、ペアスコアが最小のものを選ぶ
-    // 同点の場合は対戦履歴をタイブレーカーとして使用（逆転なし）
-    const allMatchings = perfectMatchings(playing);
-    const minPairScore = Math.min(...allMatchings.map((m) => scorePairMatching(m, participants, prevPairKeys)));
-    const pairTiedMatchings = allMatchings.filter((m) => scorePairMatching(m, participants, prevPairKeys) === minPairScore);
-    const minTiebreaker = Math.min(...pairTiedMatchings.map((m) => opponentTiebreakerScore(m, participants, prevOpponentKeys)));
-    const bestMatchings = pairTiedMatchings.filter((m) => opponentTiebreakerScore(m, participants, prevOpponentKeys) === minTiebreaker);
-    const chosenMatching = bestMatchings[Math.floor(Math.random() * bestMatchings.length)];
+    let chosenGrouping: [[string, string], [string, string]][];
 
-    // Step3: ペアをコートに割り当て、対戦スコアが最小の組み合わせを選ぶ
-    const allGroupings = courtGroupingsOfPairs(chosenMatching, courtCount);
-    const minOpponentScore = Math.min(
-      ...allGroupings.map((g) =>
-        g.reduce((sum, [pA, pB]) => sum + scoreOpponents([...pA], [...pB], participants, prevOpponentKeys), 0)
-      )
-    );
-    const bestGroupings = allGroupings.filter(
-      (g) =>
-        g.reduce((sum, [pA, pB]) => sum + scoreOpponents([...pA], [...pB], participants, prevOpponentKeys), 0) ===
-        minOpponentScore
-    );
-    const chosenGrouping = bestGroupings[Math.floor(Math.random() * bestGroupings.length)];
+    if (playing.length <= EXHAUSTIVE_THRESHOLD) {
+      // 少人数: 全列挙で最適解
+      const allMatchings = perfectMatchings(playing);
+      const minPairScore = Math.min(...allMatchings.map((m) => scorePairMatching(m, participants, prevPairKeys)));
+      const pairTiedMatchings = allMatchings.filter((m) => scorePairMatching(m, participants, prevPairKeys) === minPairScore);
+      const minTiebreaker = Math.min(...pairTiedMatchings.map((m) => opponentTiebreakerScore(m, participants, prevOpponentKeys)));
+      const bestMatchings = pairTiedMatchings.filter((m) => opponentTiebreakerScore(m, participants, prevOpponentKeys) === minTiebreaker);
+      const chosenMatching = bestMatchings[Math.floor(Math.random() * bestMatchings.length)];
 
-    // コート番号はシャッフルして偏りを防ぐ
+      const allGroupings = courtGroupingsOfPairs(chosenMatching, courtCount);
+      const minOpponentScore = Math.min(
+        ...allGroupings.map((g) =>
+          g.reduce((sum, [pA, pB]) => sum + scoreOpponents([...pA], [...pB], participants, prevOpponentKeys), 0)
+        )
+      );
+      const bestGroupings = allGroupings.filter(
+        (g) =>
+          g.reduce((sum, [pA, pB]) => sum + scoreOpponents([...pA], [...pB], participants, prevOpponentKeys), 0) ===
+          minOpponentScore
+      );
+      chosenGrouping = bestGroupings[Math.floor(Math.random() * bestGroupings.length)];
+    } else {
+      // 大人数: サンプリングで近似解
+      const chosenMatching = sampleBestMatching(playing, participants, prevPairKeys, prevOpponentKeys);
+      chosenGrouping = sampleBestCourtGrouping(chosenMatching, courtCount, participants, prevOpponentKeys);
+    }
+
     const courtNumbers = shuffle([...Array(courtCount)].map((_, i) => i + 1));
     courts = chosenGrouping.map(([pairA, pairB], i) => ({
       courtNumber: courtNumbers[i],
@@ -268,18 +347,32 @@ export function generateRound(
     }));
     courts.sort((a, b) => a.courtNumber - b.courtNumber);
   } else {
-    // シングルス: 対戦ペアの完全マッチングを全列挙してスコア最小を選ぶ
-    const allMatchings = perfectMatchings(playing);
-    const minScore = Math.min(
-      ...allMatchings.map((m) =>
-        m.reduce((sum, [a, b]) => sum + scoreOpponents([a], [b], participants, prevOpponentKeys), 0)
-      )
-    );
-    const bestMatchings = allMatchings.filter(
-      (m) =>
-        m.reduce((sum, [a, b]) => sum + scoreOpponents([a], [b], participants, prevOpponentKeys), 0) === minScore
-    );
-    const chosenMatching = bestMatchings[Math.floor(Math.random() * bestMatchings.length)];
+    let chosenMatching: [string, string][];
+
+    if (playing.length <= EXHAUSTIVE_THRESHOLD) {
+      // 少人数: 全列挙
+      const allMatchings = perfectMatchings(playing);
+      const minScore = Math.min(
+        ...allMatchings.map((m) =>
+          m.reduce((sum, [a, b]) => sum + scoreOpponents([a], [b], participants, prevOpponentKeys), 0)
+        )
+      );
+      const bestMatchings = allMatchings.filter(
+        (m) =>
+          m.reduce((sum, [a, b]) => sum + scoreOpponents([a], [b], participants, prevOpponentKeys), 0) === minScore
+      );
+      chosenMatching = bestMatchings[Math.floor(Math.random() * bestMatchings.length)];
+    } else {
+      // 大人数: サンプリング（シングルスはペア=対戦なのでopponentスコアで選ぶ）
+      let best = randomMatching(playing);
+      let bestScore = best.reduce((sum, [a, b]) => sum + scoreOpponents([a], [b], participants, prevOpponentKeys), 0);
+      for (let i = 1; i < SAMPLE_COUNT; i++) {
+        const m = randomMatching(playing);
+        const s = m.reduce((sum, [a, b]) => sum + scoreOpponents([a], [b], participants, prevOpponentKeys), 0);
+        if (s < bestScore) { best = m; bestScore = s; }
+      }
+      chosenMatching = best;
+    }
 
     const courtNumbers = shuffle([...Array(courtCount)].map((_, i) => i + 1));
     courts = chosenMatching.map(([a, b], i) => ({
