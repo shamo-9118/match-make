@@ -186,6 +186,7 @@ export default function UsersPage() {
       await fullSync();
     } catch (e) {
       console.error('Sync failed', e);
+      alert(`同期エラー: ${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setSyncing(false);
     }
