@@ -33,6 +33,7 @@ export async function syncToSheet() {
       color: u.color,
       createdAt: u.createdAt,
       archived: u.archived,
+      locations: u.locations ?? [],
     }));
 
     const locations = useLocationStore.getState().locations;
