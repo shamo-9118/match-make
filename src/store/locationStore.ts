@@ -22,6 +22,8 @@ export const useLocationStore = create<LocationStore>()(
       locations: [],
 
       addLocation: (loc) => {
+        const exists = get().locations.some((l) => l.id === loc.id);
+        if (exists) return;
         set({ locations: [...get().locations, loc] });
       },
 
@@ -38,26 +40,31 @@ export const useLocationStore = create<LocationStore>()(
       },
 
       importLocations: (remote) => {
-        const current = get().locations;
-        const localMap = new Map(current.map((l) => [l.id, l]));
-        const updated = [...current];
-
-        for (const rl of remote) {
-          const existing = localMap.get(rl.id);
-          if (!existing) {
-            updated.push(rl);
-          } else if (existing.name !== rl.name) {
-            const idx = updated.findIndex((l) => l.id === rl.id);
-            updated[idx] = { ...existing, name: rl.name };
-          }
+        // リモートデータでローカルを置き換え（IDベースでマージ）
+        const mergedMap = new Map<string, Location>();
+        // ローカルを先に入れる
+        for (const l of get().locations) {
+          mergedMap.set(l.id, l);
         }
-
-        set({ locations: updated });
+        // リモートで上書き
+        for (const rl of remote) {
+          mergedMap.set(rl.id, rl);
+        }
+        set({ locations: Array.from(mergedMap.values()) });
       },
     }),
     {
       name: 'match-make:locations',
-      version: 1,
+      version: 2,
+      migrate: (persistedState: unknown) => {
+        const state = persistedState as { locations: Location[] };
+        // 重複IDを除去
+        const seen = new Map<string, Location>();
+        for (const l of state.locations ?? []) {
+          seen.set(l.id, l);
+        }
+        return { ...state, locations: Array.from(seen.values()) };
+      },
     }
   )
 );
