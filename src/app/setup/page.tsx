@@ -1,12 +1,13 @@
 'use client';
 import { useState } from 'react';
 import {
-  AppShell, Title, Button, Group, Stack, Avatar, Text, Card,
+  AppShell, Title, Button, Group, Stack, Avatar, Text, Card, Badge,
   Flex, SegmentedControl, SimpleGrid, Checkbox, Modal, ThemeIcon,
 } from '@mantine/core';
-import { IconSwords, IconUsers } from '@tabler/icons-react';
+import { IconSwords, IconUsers, IconMapPin } from '@tabler/icons-react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/userStore';
+import { useLocationStore } from '@/store/locationStore';
 import { useSessionStore } from '@/store/sessionStore';
 import { GameFormat } from '@/types';
 import { generateRound } from '@/utils/algorithm';
@@ -15,14 +16,21 @@ export default function SetupPage() {
   const router = useRouter();
   const { users: allUsers, resetAllStats } = useUserStore();
   const users = allUsers.filter((u) => !u.archived);
+  const { locations } = useLocationStore();
   const { startSession, setNextRound } = useSessionStore();
 
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [courtCount, setCourtCount] = useState(2);
   const [gameFormat, setGameFormat] = useState<GameFormat>('doubles');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [resetConfirmOpened, setResetConfirmOpened] = useState(false);
 
-  const sortedUsers = [...users].sort((a, b) => b.totalPlayCount - a.totalPlayCount);
+  // 場所でフィルター（場所未選択なら全員、選択時はその場所に属するユーザー + 場所未設定ユーザー）
+  const filteredUsers = selectedLocation
+    ? users.filter((u) => !u.locations || u.locations.length === 0 || u.locations.includes(selectedLocation))
+    : users;
+
+  const sortedUsers = [...filteredUsers].sort((a, b) => b.totalPlayCount - a.totalPlayCount);
   const playersPerCourt = gameFormat === 'doubles' ? 4 : 2;
   const minRequired = courtCount * playersPerCourt;
   const canStart = selectedIds.size >= minRequired;
@@ -97,6 +105,41 @@ export default function SetupPage() {
           </Card>
 
           <Title order={4}>ゲーム設定</Title>
+
+          {/* 場所フィルター */}
+          {locations.length > 0 && (
+            <Card withBorder radius="md" padding="md">
+              <Stack gap="sm">
+                <Flex align="center" gap="xs">
+                  <IconMapPin size={16} />
+                  <Text fw={600}>練習場所</Text>
+                </Flex>
+                <Group gap="xs" wrap="wrap">
+                  <Badge
+                    variant={selectedLocation === null ? 'filled' : 'light'}
+                    color="gray"
+                    size="lg"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => { setSelectedLocation(null); setSelectedIds(new Set()); }}
+                  >
+                    すべて
+                  </Badge>
+                  {locations.map((loc) => (
+                    <Badge
+                      key={loc.id}
+                      variant={selectedLocation === loc.name ? 'filled' : 'light'}
+                      color="teal"
+                      size="lg"
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => { setSelectedLocation(loc.name); setSelectedIds(new Set()); }}
+                    >
+                      {loc.name}
+                    </Badge>
+                  ))}
+                </Group>
+              </Stack>
+            </Card>
+          )}
 
           {/* コート数 */}
           <Card withBorder radius="md" padding="md">
