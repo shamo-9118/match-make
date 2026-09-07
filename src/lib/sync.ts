@@ -5,6 +5,7 @@ const GAS_URL = process.env.NEXT_PUBLIC_GAS_URL
   || 'https://script.google.com/macros/s/AKfycbwZa6k7ik7Tf2MgKC0SXvkLTMMvZHMXPdiFxuEDeN37Dg4FYHnztdOsLV6qYa8rwzmBDg/exec';
 
 const SYNC_TS_KEY = 'match-make:last-sync';
+let syncing = false; // 二重実行防止
 
 function getLastSyncTime(): string | null {
   if (typeof window === 'undefined') return null;
@@ -18,33 +19,38 @@ function setLastSyncTime(iso: string) {
 // Push local unsynced users to GAS sheet
 export async function syncToSheet() {
   if (!GAS_URL || !navigator.onLine) return;
+  if (syncing) return;
+  syncing = true;
+  try {
+    const { getUnsyncedUsers, markSynced } = useUserStore.getState();
+    const unsynced = getUnsyncedUsers();
+    if (unsynced.length === 0) return;
 
-  const { getUnsyncedUsers, markSynced } = useUserStore.getState();
-  const unsynced = getUnsyncedUsers();
-  if (unsynced.length === 0) return;
+    const members = unsynced.map((u) => ({
+      id: u.id,
+      name: u.name,
+      gender: u.gender,
+      color: u.color,
+      createdAt: u.createdAt,
+      archived: u.archived,
+    }));
 
-  const members = unsynced.map((u) => ({
-    id: u.id,
-    name: u.name,
-    gender: u.gender,
-    color: u.color,
-    createdAt: u.createdAt,
-    archived: u.archived,
-  }));
+    const locations = useLocationStore.getState().locations;
 
-  const locations = useLocationStore.getState().locations;
+    // GAS redirects POST (302), so use no-cors
+    await fetch(GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ members, matches: [], locations }),
+    });
 
-  // GAS redirects POST (302), so use no-cors
-  await fetch(GAS_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ members, matches: [], locations }),
-  });
-
-  // no-cors returns opaque response, assume success
-  markSynced(unsynced.map((u) => u.id));
-  setLastSyncTime(new Date().toISOString());
+    // no-cors returns opaque response, assume success
+    markSynced(unsynced.map((u) => u.id));
+    setLastSyncTime(new Date().toISOString());
+  } finally {
+    syncing = false;
+  }
 }
 
 // Pull users from GAS sheet into local store
