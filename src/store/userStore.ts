@@ -6,15 +6,15 @@ import { pickColor } from '@/utils/colors';
 
 interface UserStore {
   users: User[];
-  addUser: (user: Omit<User, 'color' | 'gender' | 'createdAt' | 'synced' | 'archived' | 'source' | 'totalPlayCount' | 'totalRestCount' | 'pairHistory' | 'opponentHistory' | 'teamBattlePairHistory' | 'teamBattleOpponentHistory'>) => void;
-  updateUser: (id: string, updates: Partial<Pick<User, 'name' | 'imagePath' | 'color' | 'gender'>>) => void;
+  addUser: (user: Omit<User, 'color' | 'gender' | 'createdAt' | 'synced' | 'archived' | 'source' | 'locations' | 'totalPlayCount' | 'totalRestCount' | 'pairHistory' | 'opponentHistory' | 'teamBattlePairHistory' | 'teamBattleOpponentHistory'>) => void;
+  updateUser: (id: string, updates: Partial<Pick<User, 'name' | 'imagePath' | 'color' | 'gender' | 'locations'>>) => void;
   deleteUser: (id: string) => void;
   updateUserStats: (updatedUsers: User[]) => void;
   resetAllStats: () => void;
   resetTeamBattleStats: () => void;
   getActiveUsers: () => User[];
   getUnsyncedUsers: () => User[];
-  importUsers: (remoteUsers: Array<{ id: string; name: string; gender: string | null; color: string | null; createdAt: string; archived: boolean }>) => void;
+  importUsers: (remoteUsers: Array<{ id: string; name: string; gender: string | null; color: string | null; createdAt: string; archived: boolean; locations?: string[] }>) => void;
   markSynced: (ids: string[]) => void;
 }
 
@@ -32,6 +32,7 @@ export const useUserStore = create<UserStore>()(
           synced: false,
           archived: false,
           source: 'local',
+          locations: [],
           totalPlayCount: 0,
           totalRestCount: 0,
           pairHistory: {},
@@ -103,6 +104,7 @@ export const useUserStore = create<UserStore>()(
             synced: true,
             archived: rm.archived ?? false,
             source: 'sheet',
+            locations: rm.locations ?? [],
             totalPlayCount: 0,
             totalRestCount: 0,
             pairHistory: {},
@@ -115,6 +117,7 @@ export const useUserStore = create<UserStore>()(
             name: rm.name,
             gender: rm.gender as User['gender'],
             color: rm.color ?? base.color,
+            locations: rm.locations ?? base.locations,
             createdAt: rm.createdAt ?? base.createdAt,
             archived: rm.archived ?? false,
             synced: true,
@@ -140,7 +143,7 @@ export const useUserStore = create<UserStore>()(
     }),
     {
       name: 'match-make:users',
-      version: 4,
+      version: 5,
       migrate: (persistedState: unknown) => {
         const state = persistedState as { users: User[] };
         const migratedUsers: User[] = [];
@@ -153,6 +156,7 @@ export const useUserStore = create<UserStore>()(
             synced: u.synced ?? false,
             archived: u.archived ?? false,
             source: u.source ?? 'local',
+            locations: u.locations ?? [],
             teamBattlePairHistory: u.teamBattlePairHistory ?? {},
             teamBattleOpponentHistory: u.teamBattleOpponentHistory ?? {},
           });

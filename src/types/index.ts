@@ -15,6 +15,7 @@ export interface User {
   synced: boolean;     // スプレッドシート同期済みか
   archived: boolean;   // アーカイブ済み（論理削除）
   source: 'local' | 'sheet'; // 作成元（ローカル or スプレッドシート）
+  locations: string[]; // 所属場所名リスト
   // 個人戦セッション内カウント（個人戦リセットでクリア）
   totalPlayCount: number;
   totalRestCount: number;

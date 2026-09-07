@@ -7,10 +7,11 @@ import {
   Burger, Drawer, SegmentedControl,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { IconPlus, IconTrash, IconPencil, IconRefresh } from '@tabler/icons-react';
+import { IconPlus, IconTrash, IconPencil, IconRefresh, IconMapPin, IconCheck, IconX } from '@tabler/icons-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useRouter } from 'next/navigation';
 import { useUserStore } from '@/store/userStore';
+import { useLocationStore } from '@/store/locationStore';
 import { fullSync } from '@/lib/sync';
 import { generateId } from '@/utils/id';
 import { USER_COLORS } from '@/utils/colors';
@@ -18,12 +19,18 @@ import { USER_COLORS } from '@/utils/colors';
 export default function UsersPage() {
   const router = useRouter();
   const { users: allUsers, addUser, updateUser, deleteUser, resetAllStats, resetTeamBattleStats } = useUserStore();
+  const { locations: allLocations, addLocation, updateLocation: updateLocationStore, deleteLocation: deleteLocationStore } = useLocationStore();
   const users = allUsers.filter((u) => !u.archived);
   const [name, setName] = useState('');
-  const [editModalUser, setEditModalUser] = useState<{ id: string; name: string; color: string; gender: string } | null>(null);
+  const [editModalUser, setEditModalUser] = useState<{ id: string; name: string; color: string; gender: string; locations: string[] } | null>(null);
   const [editModalName, setEditModalName] = useState('');
   const [editModalColor, setEditModalColor] = useState('');
   const [editModalGender, setEditModalGender] = useState<string>('null');
+  const [editModalLocations, setEditModalLocations] = useState<string[]>([]);
+  const [locationModalOpened, { open: openLocationModal, close: closeLocationModal }] = useDisclosure(false);
+  const [newLocationName, setNewLocationName] = useState('');
+  const [editingLocationId, setEditingLocationId] = useState<string | null>(null);
+  const [editingLocationName, setEditingLocationName] = useState('');
   const [resetTeamBattleOpened, { open: openResetTeamBattle, close: closeResetTeamBattle }] = useDisclosure(false);
   const [resetOpened, { open: openReset, close: closeReset }] = useDisclosure(false);
   const [deletingUser, setDeletingUser] = useState<{ id: string; name: string } | null>(null);
@@ -162,21 +169,71 @@ export default function UsersPage() {
     reader.readAsDataURL(file);
   };
 
-  const openEditModal = (user: { id: string; name: string; color: string; gender: string }) => {
+  const openEditModal = (user: { id: string; name: string; color: string; gender: string; locations: string[] }) => {
     setEditModalUser(user);
     setEditModalName(user.name);
     setEditModalColor(user.color);
     setEditModalGender(user.gender ?? 'null');
+    setEditModalLocations(user.locations ?? []);
   };
 
   const handleEditSave = () => {
     if (!editModalUser) return;
-    if (editModalName.trim()) updateUser(editModalUser.id, { name: editModalName.trim() });
     updateUser(editModalUser.id, {
+      name: editModalName.trim() || editModalUser.name,
       color: editModalColor,
       gender: editModalGender === 'null' ? null : editModalGender as 'male' | 'female',
+      locations: editModalLocations,
     });
     setEditModalUser(null);
+  };
+
+  const toggleEditLocation = (loc: string) => {
+    setEditModalLocations((prev) =>
+      prev.includes(loc) ? prev.filter((l) => l !== loc) : [...prev, loc]
+    );
+  };
+
+  const handleAddLocation = () => {
+    if (!newLocationName.trim()) return;
+    addLocation({ id: generateId(), name: newLocationName.trim(), createdAt: new Date().toISOString() });
+    setNewLocationName('');
+  };
+
+  const handleStartEditLocation = (id: string, name: string) => {
+    setEditingLocationId(id);
+    setEditingLocationName(name);
+  };
+
+  const handleSaveEditLocation = () => {
+    if (!editingLocationId || !editingLocationName.trim()) return;
+    const oldLoc = allLocations.find((l) => l.id === editingLocationId);
+    if (oldLoc && oldLoc.name !== editingLocationName.trim()) {
+      const oldName = oldLoc.name;
+      const newName = editingLocationName.trim();
+      updateLocationStore(editingLocationId, newName);
+      // Update all users who had the old location name
+      allUsers.forEach((u) => {
+        if (u.locations?.includes(oldName)) {
+          updateUser(u.id, { locations: u.locations.map((l) => l === oldName ? newName : l) });
+        }
+      });
+    }
+    setEditingLocationId(null);
+    setEditingLocationName('');
+  };
+
+  const handleDeleteLocation = (id: string) => {
+    const loc = allLocations.find((l) => l.id === id);
+    if (loc) {
+      // Remove from all users
+      allUsers.forEach((u) => {
+        if (u.locations?.includes(loc.name)) {
+          updateUser(u.id, { locations: u.locations.filter((l) => l !== loc.name) });
+        }
+      });
+      deleteLocationStore(id);
+    }
   };
 
   const handleSync = async () => {
@@ -207,6 +264,7 @@ export default function UsersPage() {
           {/* PC */}
           <Group gap="xs" visibleFrom="md">
             <Button variant="light" color="teal" onClick={handleSync} loading={syncing} leftSection={<IconRefresh size={16} />}>同期</Button>
+            <Button variant="light" color="cyan" onClick={openLocationModal} leftSection={<IconMapPin size={16} />}>場所管理</Button>
             <Button variant="light" onClick={openScanner}>インポート</Button>
             <Button variant="light" onClick={openShare}>共有</Button>
             <Button color="orange" variant="light" onClick={openResetTeamBattle}>団体戦統計リセット</Button>
@@ -249,7 +307,7 @@ export default function UsersPage() {
                     <Text flex={1} fw={500} size="md">{user.name}</Text>
                   </Flex>
                   <Flex justify="space-between" align="center">
-                    <Group gap="xs">
+                    <Group gap="xs" wrap="wrap">
                       <Badge variant="light" color={user.source === 'sheet' ? 'green' : 'yellow'} size="sm">
                         {user.source === 'sheet' ? 'スプシ' : 'ローカル'}
                       </Badge>
@@ -260,9 +318,12 @@ export default function UsersPage() {
                       >
                         {user.gender === 'male' ? '男' : user.gender === 'female' ? '女' : '性別未設定'}
                       </Badge>
+                      {user.locations?.map((loc) => (
+                        <Badge key={loc} variant="light" color="teal" size="sm">{loc}</Badge>
+                      ))}
                     </Group>
                     <Group gap="xs">
-                      <ActionIcon variant="light" size="sm" onClick={() => openEditModal({ ...user, gender: user.gender ?? 'null' })}>
+                      <ActionIcon variant="light" size="sm" onClick={() => openEditModal({ ...user, gender: user.gender ?? 'null', locations: user.locations ?? [] })}>
                         <IconPencil size={14} />
                       </ActionIcon>
                       <ActionIcon variant="light" color="red" size="sm" onClick={() => setDeletingUser({ id: user.id, name: user.name })}>
@@ -282,7 +343,7 @@ export default function UsersPage() {
                     {user.name[0]}
                   </Avatar>
                   <Text flex={1} fw={500} size="lg">{user.name}</Text>
-                  <Group gap="xs">
+                  <Group gap="xs" wrap="wrap">
                     <Badge variant="light" color={user.source === 'sheet' ? 'green' : 'yellow'}>
                       {user.source === 'sheet' ? 'スプシ' : 'ローカル'}
                     </Badge>
@@ -293,7 +354,10 @@ export default function UsersPage() {
                     >
                       {user.gender === 'male' ? '男' : user.gender === 'female' ? '女' : '性別未設定'}
                     </Badge>
-                    <ActionIcon variant="light" onClick={() => openEditModal({ ...user, gender: user.gender ?? 'null' })}>
+                    {user.locations?.map((loc) => (
+                      <Badge key={loc} variant="light" color="teal">{loc}</Badge>
+                    ))}
+                    <ActionIcon variant="light" onClick={() => openEditModal({ ...user, gender: user.gender ?? 'null', locations: user.locations ?? [] })}>
                       <IconPencil size={16} />
                     </ActionIcon>
                     <ActionIcon variant="light" color="red" onClick={() => setDeletingUser({ id: user.id, name: user.name })}>
@@ -367,6 +431,7 @@ export default function UsersPage() {
       <Drawer opened={menuOpened} onClose={closeMenu} position="right" size="xs" title="メニュー">
         <Stack gap="sm">
           <Button fullWidth variant="light" color="teal" onClick={() => { handleSync(); closeMenu(); }} loading={syncing} leftSection={<IconRefresh size={16} />}>同期</Button>
+          <Button fullWidth variant="light" color="cyan" onClick={() => { openLocationModal(); closeMenu(); }} leftSection={<IconMapPin size={16} />}>場所管理</Button>
           <Button fullWidth variant="light" onClick={() => { openScanner(); closeMenu(); }}>インポート</Button>
           <Button fullWidth variant="light" onClick={() => { openShare(); closeMenu(); }}>共有</Button>
           <Button fullWidth color="orange" variant="light" onClick={() => { openResetTeamBattle(); closeMenu(); }}>団体戦統計リセット</Button>
@@ -429,6 +494,26 @@ export default function UsersPage() {
             />
           </Stack>
           <Stack gap="xs">
+            <Text size="sm" fw={500}>所属場所</Text>
+            <Group gap="xs" wrap="wrap">
+              {allLocations.map((loc) => (
+                <Badge
+                  key={loc.id}
+                  variant={editModalLocations.includes(loc.name) ? 'filled' : 'light'}
+                  color="teal"
+                  size="lg"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => toggleEditLocation(loc.name)}
+                >
+                  {loc.name}
+                </Badge>
+              ))}
+              {allLocations.length === 0 && (
+                <Text size="xs" c="dimmed">場所が未登録です。場所管理から追加してください。</Text>
+              )}
+            </Group>
+          </Stack>
+          <Stack gap="xs">
             <Text size="sm" fw={500}>カラー</Text>
             <SimpleGrid cols={6} spacing={8}>
               {USER_COLORS.map((c) => (
@@ -471,6 +556,66 @@ export default function UsersPage() {
           <Button variant="default" onClick={closeReset}>キャンセル</Button>
           <Button color="red" onClick={handleReset}>終了する</Button>
         </Group>
+      </Modal>
+
+      <Modal opened={locationModalOpened} onClose={closeLocationModal} title="場所管理" centered size="sm">
+        <Stack gap="md">
+          <Group>
+            <TextInput
+              flex={1}
+              placeholder="場所名を入力"
+              value={newLocationName}
+              onChange={(e) => setNewLocationName(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddLocation()}
+            />
+            <Button leftSection={<IconPlus size={16} />} onClick={handleAddLocation}>追加</Button>
+          </Group>
+          <Stack gap="xs">
+            {allLocations.map((loc) => {
+              const memberCount = users.filter((u) => u.locations?.includes(loc.name)).length;
+              return (
+                <Card key={loc.id} withBorder padding="sm" radius="md">
+                  {editingLocationId === loc.id ? (
+                    <Flex align="center" gap="xs">
+                      <TextInput
+                        flex={1}
+                        value={editingLocationName}
+                        onChange={(e) => setEditingLocationName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSaveEditLocation()}
+                        autoFocus
+                        size="xs"
+                      />
+                      <ActionIcon variant="light" color="green" size="sm" onClick={handleSaveEditLocation}>
+                        <IconCheck size={14} />
+                      </ActionIcon>
+                      <ActionIcon variant="light" size="sm" onClick={() => setEditingLocationId(null)}>
+                        <IconX size={14} />
+                      </ActionIcon>
+                    </Flex>
+                  ) : (
+                    <Flex align="center" justify="space-between">
+                      <Group gap="xs">
+                        <Text fw={500} size="sm">{loc.name}</Text>
+                        <Badge variant="light" color="gray" size="sm">{memberCount}人</Badge>
+                      </Group>
+                      <Group gap="xs">
+                        <ActionIcon variant="light" size="sm" onClick={() => handleStartEditLocation(loc.id, loc.name)}>
+                          <IconPencil size={14} />
+                        </ActionIcon>
+                        <ActionIcon variant="light" color="red" size="sm" onClick={() => handleDeleteLocation(loc.id)}>
+                          <IconTrash size={14} />
+                        </ActionIcon>
+                      </Group>
+                    </Flex>
+                  )}
+                </Card>
+              );
+            })}
+            {allLocations.length === 0 && (
+              <Text c="dimmed" ta="center" size="sm" py="md">場所が登録されていません</Text>
+            )}
+          </Stack>
+        </Stack>
       </Modal>
     </AppShell>
   );

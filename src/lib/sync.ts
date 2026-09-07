@@ -1,4 +1,5 @@
 import { useUserStore } from '@/store/userStore';
+import { useLocationStore } from '@/store/locationStore';
 
 const GAS_URL = process.env.NEXT_PUBLIC_GAS_URL
   || 'https://script.google.com/macros/s/AKfycbwZa6k7ik7Tf2MgKC0SXvkLTMMvZHMXPdiFxuEDeN37Dg4FYHnztdOsLV6qYa8rwzmBDg/exec';
@@ -31,12 +32,14 @@ export async function syncToSheet() {
     archived: u.archived,
   }));
 
+  const locations = useLocationStore.getState().locations;
+
   // GAS redirects POST (302), so use no-cors
   await fetch(GAS_URL, {
     method: 'POST',
     mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ members, matches: [] }),
+    body: JSON.stringify({ members, matches: [], locations }),
   });
 
   // no-cors returns opaque response, assume success
@@ -57,6 +60,9 @@ export async function pullFromSheet() {
   const data = await response.json();
   if (data.members && data.members.length > 0) {
     useUserStore.getState().importUsers(data.members);
+  }
+  if (data.locations && data.locations.length > 0) {
+    useLocationStore.getState().importLocations(data.locations);
   }
   setLastSyncTime(new Date().toISOString());
 }
