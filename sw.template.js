@@ -1,6 +1,6 @@
-// ビルド時に next.config.ts が 1788810978704 を置換して public/sw.js を生成する。
+// ビルド時に next.config.ts が __BUILD_ID__ を置換して public/sw.js を生成する。
 // キャッシュ戦略は network-first のため、オンラインなら常に最新を返す。
-const CACHE_NAME = 'match-make-1788810978704';
+const CACHE_NAME = 'match-make-__BUILD_ID__';
 
 self.addEventListener('install', (event) => {
   // 待機せず即座に新 SW をアクティブ化

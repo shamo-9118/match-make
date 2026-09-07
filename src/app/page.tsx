@@ -47,6 +47,11 @@ export default function HomePage() {
         <Stack w={280} align="center" gap="md">
           <Image src="/app-icon.png" w={280} radius="xl" />
           <Text c="dimmed" ta="center">コートスポーツのメンバー割り振りをお任せ！</Text>
+          <Text size="xs" c="dimmed" ta="center">
+            build: {process.env.NEXT_PUBLIC_BUILD_TIME
+              ? new Date(process.env.NEXT_PUBLIC_BUILD_TIME).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })
+              : 'dev'}
+          </Text>
           <Button w="100%" size="xl" color="green" leftSection={<IconSwords size={24} />} onClick={() => router.push('/setup')}>
             ゲーム
           </Button>

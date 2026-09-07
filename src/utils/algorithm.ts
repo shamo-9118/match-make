@@ -1,5 +1,33 @@
 import { User, Court, Round, GameFormat } from '../types';
 
+// =====================================================================
+// 定数
+// =====================================================================
+
+/** プレイ人数がこの値以下なら全列挙で最適解を求める */
+const EXHAUSTIVE_THRESHOLD = 10;
+
+const PAIR_WEIGHT = 3;
+const CONSECUTIVE_PAIR_PENALTY = 50;
+const CONSECUTIVE_OPPONENT_PENALTY = 20;
+
+/** Multi-start hill climbing の初期解生成数 */
+const MULTI_START_COUNT = 80;
+
+/**
+ * 連続休憩の重みダンプニング係数。
+ * 直前ラウンドで休憩した人の休憩選出重みをこの係数で減衰させる。
+ * 完全除外（旧仕様）ではなく確率的に許容することで、
+ * プレイ人数≒休憩人数の場面（例: 8人1コート）でのグループ固定化を防ぐ。
+ * 0.2 の場合、8人1コートで約70%の確率で1人が持ち越し休憩となり
+ * 毎ラウンド異なるメンバー構成が生まれる。
+ */
+const CONSECUTIVE_REST_DAMPENING = 0.2;
+
+// =====================================================================
+// 汎用ユーティリティ
+// =====================================================================
+
 /** 配列をシャッフル（Fisher-Yates） */
 function shuffle<T>(arr: T[]): T[] {
   const a = [...arr];
@@ -57,7 +85,11 @@ function weightedRandomPick(
   return result;
 }
 
-/** 全プレーヤーを2人ずつのペアに分ける全パターンを生成（完全マッチング）— 少人数用 */
+// =====================================================================
+// 組み合わせ列挙（少人数用）
+// =====================================================================
+
+/** 全プレーヤーを2人ずつのペアに分ける全パターンを生成（完全マッチング） */
 function perfectMatchings(players: string[]): [string, string][][] {
   if (players.length === 0) return [[]];
   const [first, ...rest] = players;
@@ -72,7 +104,7 @@ function perfectMatchings(players: string[]): [string, string][][] {
   return result;
 }
 
-/** ペアのリストをコートに2ペアずつ割り当てる全パターンを生成 — 少人数用 */
+/** ペアのリストをコートに2ペアずつ割り当てる全パターンを生成 */
 function courtGroupingsOfPairs(
   pairs: [string, string][],
   courtCount: number,
@@ -90,7 +122,9 @@ function courtGroupingsOfPairs(
   return result;
 }
 
-// --- 大人数向けサンプリング方式 ---
+// =====================================================================
+// ランダムマッチング生成
+// =====================================================================
 
 /** プレイヤーをシャッフルして隣接ペアにする（ランダムな完全マッチング1つ） */
 function randomMatching(players: string[]): [string, string][] {
@@ -102,71 +136,9 @@ function randomMatching(players: string[]): [string, string][] {
   return pairs;
 }
 
-/** 大人数時にサンプリングで最良のペアマッチングを選ぶ */
-const SAMPLE_COUNT = 3000;
-
-function sampleBestMatching(
-  playing: string[],
-  users: User[],
-  prevPairKeys: Set<string>,
-  prevOpponentKeys: Set<string>,
-): [string, string][] {
-  let best = randomMatching(playing);
-  let bestPairScore = scorePairMatching(best, users, prevPairKeys);
-  let bestTiebreaker = opponentTiebreakerScore(best, users, prevOpponentKeys);
-
-  for (let i = 1; i < SAMPLE_COUNT; i++) {
-    const m = randomMatching(playing);
-    const ps = scorePairMatching(m, users, prevPairKeys);
-    const tb = opponentTiebreakerScore(m, users, prevOpponentKeys);
-    if (ps < bestPairScore || (ps === bestPairScore && tb < bestTiebreaker)) {
-      best = m;
-      bestPairScore = ps;
-      bestTiebreaker = tb;
-    }
-  }
-  return best;
-}
-
-/** 大人数時にサンプリングで最良のコート割り当てを選ぶ */
-function sampleBestCourtGrouping(
-  pairs: [string, string][],
-  courtCount: number,
-  users: User[],
-  prevOpponentKeys: Set<string>,
-): [[string, string], [string, string]][] {
-  const genRandom = (): [[string, string], [string, string]][] => {
-    const shuffled = shuffle(pairs);
-    const groups: [[string, string], [string, string]][] = [];
-    for (let i = 0; i < courtCount; i++) {
-      groups.push([shuffled[i * 2], shuffled[i * 2 + 1]]);
-    }
-    return groups;
-  };
-
-  const scoreFn = (g: [[string, string], [string, string]][]) =>
-    g.reduce((sum, [pA, pB]) => sum + scoreOpponents([...pA], [...pB], users, prevOpponentKeys), 0);
-
-  let best = genRandom();
-  let bestScore = scoreFn(best);
-
-  for (let i = 1; i < SAMPLE_COUNT; i++) {
-    const g = genRandom();
-    const s = scoreFn(g);
-    if (s < bestScore) {
-      best = g;
-      bestScore = s;
-    }
-  }
-  return best;
-}
-
-/** プレイ人数が多い場合にサンプリング方式を使うかの閾値 */
-const EXHAUSTIVE_THRESHOLD = 10;
-
-const PAIR_WEIGHT = 3;
-const CONSECUTIVE_PAIR_PENALTY = 50;
-const CONSECUTIVE_OPPONENT_PENALTY = 20;
+// =====================================================================
+// スコアリング関数（少人数全列挙パス用 — find() ベース）
+// =====================================================================
 
 /** 直前ラウンドのペアキーセット */
 function getPrevPairKeys(prevRound: Round | null): Set<string> {
@@ -249,6 +221,145 @@ function scoreOpponents(
   return score;
 }
 
+// =====================================================================
+// Map ベーススコアリング（大人数 hill climbing パス用 — O(1) ルックアップ）
+// =====================================================================
+
+function scorePairMatchingFast(
+  matching: [string, string][],
+  userMap: Map<string, User>,
+  prevPairKeys: Set<string>,
+): number {
+  let score = 0;
+  for (const [a, b] of matching) {
+    const ua = userMap.get(a)!;
+    const ub = userMap.get(b)!;
+    score += ((ua.pairHistory[b] ?? 0) + (ub.pairHistory[a] ?? 0)) * PAIR_WEIGHT;
+    if (prevPairKeys.has([a, b].sort().join(':'))) score += CONSECUTIVE_PAIR_PENALTY;
+  }
+  return score;
+}
+
+function opponentTiebreakerScoreFast(
+  matching: [string, string][],
+  userMap: Map<string, User>,
+  prevOpponentKeys: Set<string>,
+): number {
+  let score = 0;
+  for (const [a, b] of matching) {
+    const ua = userMap.get(a)!;
+    const ub = userMap.get(b)!;
+    score += (ua.opponentHistory[b] ?? 0) + (ub.opponentHistory[a] ?? 0);
+    if (prevOpponentKeys.has([a, b].sort().join(':'))) score += CONSECUTIVE_OPPONENT_PENALTY;
+  }
+  return score;
+}
+
+function scoreOpponentsFast(
+  teamA: string[],
+  teamB: string[],
+  userMap: Map<string, User>,
+  prevOpponentKeys: Set<string>,
+): number {
+  let score = 0;
+  for (const a of teamA) {
+    for (const b of teamB) {
+      const ua = userMap.get(a)!;
+      const ub = userMap.get(b)!;
+      score += (ua.opponentHistory[b] ?? 0) + (ub.opponentHistory[a] ?? 0);
+      if (prevOpponentKeys.has([a, b].sort().join(':'))) score += CONSECUTIVE_OPPONENT_PENALTY;
+    }
+  }
+  return score;
+}
+
+// =====================================================================
+// Multi-start hill climbing（大人数向け探索）
+// =====================================================================
+
+/**
+ * 2ペアのパートナーを交換した近傍を列挙する。
+ * 8ペアなら C(8,2)×2 = 56 通りの近傍 — 非常に軽量。
+ */
+function* pairSwapNeighbors(
+  matching: [string, string][],
+): Generator<[string, string][]> {
+  for (let i = 0; i < matching.length; i++) {
+    for (let j = i + 1; j < matching.length; j++) {
+      const [a, b] = matching[i];
+      const [c, d] = matching[j];
+      // 交換パターン1: (a,c) + (b,d)
+      const m1 = [...matching] as [string, string][];
+      m1[i] = [a, c];
+      m1[j] = [b, d];
+      yield m1;
+      // 交換パターン2: (a,d) + (b,c)
+      const m2 = [...matching] as [string, string][];
+      m2[i] = [a, d];
+      m2[j] = [b, c];
+      yield m2;
+    }
+  }
+}
+
+/**
+ * 局所探索: スコア関数が [primary, secondary] のタプルを返し、
+ * 辞書順で改善がなくなるまでペアスワップを繰り返す（first-improvement pivot）。
+ */
+function hillClimbMatching(
+  initial: [string, string][],
+  scoreFn: (m: [string, string][]) => [number, number],
+): [string, string][] {
+  let current = initial;
+  let [curP, curS] = scoreFn(current);
+
+  let improved = true;
+  while (improved) {
+    improved = false;
+    for (const neighbor of pairSwapNeighbors(current)) {
+      const [p, s] = scoreFn(neighbor);
+      if (p < curP || (p === curP && s < curS)) {
+        current = neighbor;
+        curP = p;
+        curS = s;
+        improved = true;
+        break; // first-improvement: 見つけ次第次のイテレーションへ
+      }
+    }
+  }
+  return current;
+}
+
+/**
+ * Multi-start hill climbing: 複数のランダム初期解から各々局所探索し、
+ * 全体の最良解を返す。純粋ランダムサンプリングと比べ、
+ * 探索空間が大きい場合（16人以上）でも良質な解に到達しやすい。
+ */
+function multiStartHillClimb(
+  playing: string[],
+  scoreFn: (m: [string, string][]) => [number, number],
+): [string, string][] {
+  let best: [string, string][] | null = null;
+  let bestP = Infinity;
+  let bestS = Infinity;
+
+  for (let i = 0; i < MULTI_START_COUNT; i++) {
+    const initial = randomMatching(playing);
+    const optimized = hillClimbMatching(initial, scoreFn);
+    const [p, s] = scoreFn(optimized);
+    if (!best || p < bestP || (p === bestP && s < bestS)) {
+      best = optimized;
+      bestP = p;
+      bestS = s;
+    }
+  }
+  return best!;
+}
+
+// =====================================================================
+// ラウンド生成
+// =====================================================================
+
 /**
  * 次のラウンドを生成する
  * @param participants 現在の参加者
@@ -274,7 +385,9 @@ export function generateRound(
   // --- Step1: 休憩者の選定 ---
   // 方針: セッション全体で休憩回数の帳尻が合えばよい（局所的な借金は許容）。
   // totalRestCount の上限（MAX_DEBT）内で、roundsSinceLastRest に基づく
-  // 重み付きランダムで選出し、グループ固定化を防ぐ。
+  // 重み付きランダムで選出。直前ラウンドの休憩者はハード除外せず
+  // CONSECUTIVE_REST_DAMPENING で重みを減衰させることで、
+  // グループ固定化（8人1コートで4:4が交互に固定される問題）を防ぐ。
   let restingIds: string[] = [];
 
   if (restCount > 0) {
@@ -282,24 +395,23 @@ export function generateRound(
     const minRestCount = Math.min(...participants.map((u) => u.totalRestCount));
     const lastRoundRestIds = prevRound?.restingPlayerIds ?? [];
 
-    // 候補プール構築: 債務上限内 → 直前ラウンドで休んでない人を優先
+    // 債務制限内の候補を抽出
     let eligible = participants.filter(
-      (u) => u.totalRestCount <= minRestCount + MAX_DEBT && !lastRoundRestIds.includes(u.id),
+      (u) => u.totalRestCount <= minRestCount + MAX_DEBT,
     );
-    // 候補不足なら直前ラウンド制約を緩和
-    if (eligible.length < restCount) {
-      eligible = participants.filter((u) => u.totalRestCount <= minRestCount + MAX_DEBT);
-    }
-    // それでも不足なら債務制約も緩和
+    // 候補不足なら債務制約を緩和（restCount 昇順でソート）
     if (eligible.length < restCount) {
       eligible = [...participants].sort((a, b) => a.totalRestCount - b.totalRestCount);
     }
 
-    // 重み = roundsSinceLastRest（長くプレイした人ほど休みやすい、ただし確率的）
-    const pool = eligible.map((u) => ({
-      id: u.id,
-      weight: Math.max(1, getRoundsSinceLastRest(u.id, pastRounds)),
-    }));
+    // 重み付きプール: roundsSinceLastRest ベース + 連続休憩ダンプニング
+    const pool = eligible.map((u) => {
+      const base = Math.max(1, getRoundsSinceLastRest(u.id, pastRounds));
+      const weight = lastRoundRestIds.includes(u.id)
+        ? base * CONSECUTIVE_REST_DAMPENING
+        : base;
+      return { id: u.id, weight };
+    });
 
     restingIds = weightedRandomPick(pool, restCount);
   }
@@ -313,7 +425,7 @@ export function generateRound(
     let chosenGrouping: [[string, string], [string, string]][];
 
     if (playing.length <= EXHAUSTIVE_THRESHOLD) {
-      // 少人数: 全列挙で最適解
+      // ---- 少人数: 全列挙で最適解 ----
       const allMatchings = perfectMatchings(playing);
       const minPairScore = Math.min(...allMatchings.map((m) => scorePairMatching(m, participants, prevPairKeys)));
       const pairTiedMatchings = allMatchings.filter((m) => scorePairMatching(m, participants, prevPairKeys) === minPairScore);
@@ -334,9 +446,30 @@ export function generateRound(
       );
       chosenGrouping = bestGroupings[Math.floor(Math.random() * bestGroupings.length)];
     } else {
-      // 大人数: サンプリングで近似解
-      const chosenMatching = sampleBestMatching(playing, participants, prevPairKeys, prevOpponentKeys);
-      chosenGrouping = sampleBestCourtGrouping(chosenMatching, courtCount, participants, prevOpponentKeys);
+      // ---- 大人数: Multi-start hill climbing + コートグルーピング全列挙 ----
+      const userMap = new Map(participants.map((u) => [u.id, u]));
+
+      // ペアマッチング: hill climbing で近似最適解
+      const doublesScoreFn = (m: [string, string][]): [number, number] => [
+        scorePairMatchingFast(m, userMap, prevPairKeys),
+        opponentTiebreakerScoreFast(m, userMap, prevOpponentKeys),
+      ];
+      const chosenMatching = multiStartHillClimb(playing, doublesScoreFn);
+
+      // コートグルーピング: ペア数 = courtCount×2 なので全列挙で十分
+      // (4コート→8ペア→105通り、5コート→10ペア→945通り)
+      const allGroupings = courtGroupingsOfPairs(chosenMatching, courtCount);
+      const minOpponentScore = Math.min(
+        ...allGroupings.map((g) =>
+          g.reduce((sum, [pA, pB]) => sum + scoreOpponentsFast([...pA], [...pB], userMap, prevOpponentKeys), 0)
+        )
+      );
+      const bestGroupings = allGroupings.filter(
+        (g) =>
+          g.reduce((sum, [pA, pB]) => sum + scoreOpponentsFast([...pA], [...pB], userMap, prevOpponentKeys), 0) ===
+          minOpponentScore
+      );
+      chosenGrouping = bestGroupings[Math.floor(Math.random() * bestGroupings.length)];
     }
 
     const courtNumbers = shuffle([...Array(courtCount)].map((_, i) => i + 1));
@@ -347,6 +480,7 @@ export function generateRound(
     }));
     courts.sort((a, b) => a.courtNumber - b.courtNumber);
   } else {
+    // ---- シングルス ----
     let chosenMatching: [string, string][];
 
     if (playing.length <= EXHAUSTIVE_THRESHOLD) {
@@ -363,15 +497,13 @@ export function generateRound(
       );
       chosenMatching = bestMatchings[Math.floor(Math.random() * bestMatchings.length)];
     } else {
-      // 大人数: サンプリング（シングルスはペア=対戦なのでopponentスコアで選ぶ）
-      let best = randomMatching(playing);
-      let bestScore = best.reduce((sum, [a, b]) => sum + scoreOpponents([a], [b], participants, prevOpponentKeys), 0);
-      for (let i = 1; i < SAMPLE_COUNT; i++) {
-        const m = randomMatching(playing);
-        const s = m.reduce((sum, [a, b]) => sum + scoreOpponents([a], [b], participants, prevOpponentKeys), 0);
-        if (s < bestScore) { best = m; bestScore = s; }
-      }
-      chosenMatching = best;
+      // 大人数: Multi-start hill climbing
+      const userMap = new Map(participants.map((u) => [u.id, u]));
+      const singlesScoreFn = (m: [string, string][]): [number, number] => [
+        m.reduce((sum, [a, b]) => sum + scoreOpponentsFast([a], [b], userMap, prevOpponentKeys), 0),
+        0,
+      ];
+      chosenMatching = multiStartHillClimb(playing, singlesScoreFn);
     }
 
     const courtNumbers = shuffle([...Array(courtCount)].map((_, i) => i + 1));
@@ -389,6 +521,10 @@ export function generateRound(
     restingPlayerIds: restingIds,
   };
 }
+
+// =====================================================================
+// カウント更新・巻き戻し・途中参加
+// =====================================================================
 
 /**
  * 「次へ」確定後にユーザーのカウントを更新した新しいUserリストを返す

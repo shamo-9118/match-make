@@ -20,6 +20,9 @@
 # production
 /build
 
+# generated service worker (built from sw.template.js)
+/public/sw.js
+
 # misc
 .DS_Store
 *.pem
