@@ -26,6 +26,7 @@ export default function SetupPage() {
   const [resetConfirmOpened, setResetConfirmOpened] = useState(false);
 
   // 場所でフィルター（場所未選択なら全員、選択時はその場所に属するユーザー + 場所未設定ユーザー）
+  // selectedLocation にはlocation IDが入る
   const filteredUsers = selectedLocation
     ? users.filter((u) => !u.locations || u.locations.length === 0 || u.locations.includes(selectedLocation))
     : users;
@@ -127,11 +128,11 @@ export default function SetupPage() {
                   {locations.map((loc) => (
                     <Badge
                       key={loc.id}
-                      variant={selectedLocation === loc.name ? 'filled' : 'light'}
+                      variant={selectedLocation === loc.id ? 'filled' : 'light'}
                       color="teal"
                       size="lg"
                       style={{ cursor: 'pointer' }}
-                      onClick={() => { setSelectedLocation(loc.name); setSelectedIds(new Set()); }}
+                      onClick={() => { setSelectedLocation(loc.id); setSelectedIds(new Set()); }}
                     >
                       {loc.name}
                     </Badge>
@@ -180,34 +181,69 @@ export default function SetupPage() {
                   <Text size="sm" c="red">（最低{minRequired}人必要）</Text>
                 )}
               </Flex>
-              <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="sm">
-                {sortedUsers.map((user) => {
-                  const selected = selectedIds.has(user.id);
+              {(() => {
+                const males = sortedUsers.filter((u) => u.gender === 'male');
+                const females = sortedUsers.filter((u) => u.gender === 'female');
+                const unset = sortedUsers.filter((u) => u.gender == null);
+                const sections: { label: string; color: string; users: typeof sortedUsers }[] = [];
+                if (males.length > 0) sections.push({ label: '男性', color: 'blue', users: males });
+                if (females.length > 0) sections.push({ label: '女性', color: 'pink', users: females });
+                if (unset.length > 0) sections.push({ label: '性別未設定', color: 'gray', users: unset });
+                return sections.map((section) => {
+                  const sectionSelected = section.users.filter((u) => selectedIds.has(u.id)).length;
+                  const allSelected = sectionSelected === section.users.length;
+                  const toggleAll = () => {
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      if (allSelected) {
+                        section.users.forEach((u) => next.delete(u.id));
+                      } else {
+                        section.users.forEach((u) => next.add(u.id));
+                      }
+                      return next;
+                    });
+                  };
                   return (
-                    <Card
-                      key={user.id}
-                      withBorder
-                      radius="md"
-                      padding="sm"
-                      onClick={() => toggleUser(user.id)}
-                      style={{
-                        cursor: 'pointer',
-                        borderColor: selected ? 'var(--mantine-color-blue-5)' : undefined,
-                        borderWidth: selected ? 2 : 1,
-                        backgroundColor: selected ? 'var(--mantine-color-blue-0)' : undefined,
-                      }}
-                    >
-                      <Flex align="center" gap="sm">
-                        <Avatar src={user.imagePath} size={40} radius="xl" color={user.color}>
-                          {user.name[0]}
-                        </Avatar>
-                        <Text fw={500} size="sm" flex={1}>{user.name}</Text>
-                        {selected && <Checkbox checked readOnly size="sm" />}
+                    <Stack key={section.label} gap="xs">
+                      <Flex align="center" gap="xs">
+                        <Badge variant="light" color={section.color}>{section.label}</Badge>
+                        <Text size="xs" c="dimmed">{sectionSelected}/{section.users.length}</Text>
+                        <Button size="compact-xs" variant="subtle" color={section.color} onClick={toggleAll}>
+                          {allSelected ? '全解除' : '全選択'}
+                        </Button>
                       </Flex>
-                    </Card>
+                      <SimpleGrid cols={{ base: 2, sm: 3, md: 4 }} spacing="sm">
+                        {section.users.map((user) => {
+                          const selected = selectedIds.has(user.id);
+                          return (
+                            <Card
+                              key={user.id}
+                              withBorder
+                              radius="md"
+                              padding="sm"
+                              onClick={() => toggleUser(user.id)}
+                              style={{
+                                cursor: 'pointer',
+                                borderColor: selected ? 'var(--mantine-color-blue-5)' : undefined,
+                                borderWidth: selected ? 2 : 1,
+                                backgroundColor: selected ? 'var(--mantine-color-blue-0)' : undefined,
+                              }}
+                            >
+                              <Flex align="center" gap="sm">
+                                <Avatar src={user.imagePath} size={40} radius="xl" color={user.color}>
+                                  {user.name[0]}
+                                </Avatar>
+                                <Text fw={500} size="sm" flex={1}>{user.name}</Text>
+                                {selected && <Checkbox checked readOnly size="sm" />}
+                              </Flex>
+                            </Card>
+                          );
+                        })}
+                      </SimpleGrid>
+                    </Stack>
                   );
-                })}
-              </SimpleGrid>
+                });
+              })()}
             </Stack>
           </Card>
 

@@ -188,9 +188,9 @@ export default function UsersPage() {
     setEditModalUser(null);
   };
 
-  const toggleEditLocation = (loc: string) => {
+  const toggleEditLocation = (locId: string) => {
     setEditModalLocations((prev) =>
-      prev.includes(loc) ? prev.filter((l) => l !== loc) : [...prev, loc]
+      prev.includes(locId) ? prev.filter((l) => l !== locId) : [...prev, locId]
     );
   };
 
@@ -207,33 +207,19 @@ export default function UsersPage() {
 
   const handleSaveEditLocation = () => {
     if (!editingLocationId || !editingLocationName.trim()) return;
-    const oldLoc = allLocations.find((l) => l.id === editingLocationId);
-    if (oldLoc && oldLoc.name !== editingLocationName.trim()) {
-      const oldName = oldLoc.name;
-      const newName = editingLocationName.trim();
-      updateLocationStore(editingLocationId, newName);
-      // Update all users who had the old location name
-      allUsers.forEach((u) => {
-        if (u.locations?.includes(oldName)) {
-          updateUser(u.id, { locations: u.locations.map((l) => l === oldName ? newName : l) });
-        }
-      });
-    }
+    updateLocationStore(editingLocationId, editingLocationName.trim());
     setEditingLocationId(null);
     setEditingLocationName('');
   };
 
   const handleDeleteLocation = (id: string) => {
-    const loc = allLocations.find((l) => l.id === id);
-    if (loc) {
-      // Remove from all users
-      allUsers.forEach((u) => {
-        if (u.locations?.includes(loc.name)) {
-          updateUser(u.id, { locations: u.locations.filter((l) => l !== loc.name) });
-        }
-      });
-      deleteLocationStore(id);
-    }
+    // Remove location ID from all users
+    allUsers.forEach((u) => {
+      if (u.locations?.includes(id)) {
+        updateUser(u.id, { locations: u.locations.filter((l) => l !== id) });
+      }
+    });
+    deleteLocationStore(id);
   };
 
   const handleSync = async () => {
@@ -318,9 +304,10 @@ export default function UsersPage() {
                       >
                         {user.gender === 'male' ? '男' : user.gender === 'female' ? '女' : '性別未設定'}
                       </Badge>
-                      {user.locations?.map((loc) => (
-                        <Badge key={loc} variant="light" color="teal" size="sm">{loc}</Badge>
-                      ))}
+                      {user.locations?.map((locId) => {
+                        const loc = allLocations.find((l) => l.id === locId);
+                        return loc ? <Badge key={locId} variant="light" color="teal" size="sm">{loc.name}</Badge> : null;
+                      })}
                     </Group>
                     <Group gap="xs">
                       <ActionIcon variant="light" size="sm" onClick={() => openEditModal({ ...user, gender: user.gender ?? 'null', locations: user.locations ?? [] })}>
@@ -354,9 +341,10 @@ export default function UsersPage() {
                     >
                       {user.gender === 'male' ? '男' : user.gender === 'female' ? '女' : '性別未設定'}
                     </Badge>
-                    {user.locations?.map((loc) => (
-                      <Badge key={loc} variant="light" color="teal">{loc}</Badge>
-                    ))}
+                    {user.locations?.map((locId) => {
+                      const loc = allLocations.find((l) => l.id === locId);
+                      return loc ? <Badge key={locId} variant="light" color="teal">{loc.name}</Badge> : null;
+                    })}
                     <ActionIcon variant="light" onClick={() => openEditModal({ ...user, gender: user.gender ?? 'null', locations: user.locations ?? [] })}>
                       <IconPencil size={16} />
                     </ActionIcon>
@@ -499,11 +487,11 @@ export default function UsersPage() {
               {allLocations.map((loc) => (
                 <Badge
                   key={loc.id}
-                  variant={editModalLocations.includes(loc.name) ? 'filled' : 'light'}
+                  variant={editModalLocations.includes(loc.id) ? 'filled' : 'light'}
                   color="teal"
                   size="lg"
                   style={{ cursor: 'pointer' }}
-                  onClick={() => toggleEditLocation(loc.name)}
+                  onClick={() => toggleEditLocation(loc.id)}
                 >
                   {loc.name}
                 </Badge>
@@ -572,7 +560,7 @@ export default function UsersPage() {
           </Group>
           <Stack gap="xs">
             {allLocations.map((loc) => {
-              const memberCount = users.filter((u) => u.locations?.includes(loc.name)).length;
+              const memberCount = users.filter((u) => u.locations?.includes(loc.id)).length;
               return (
                 <Card key={loc.id} withBorder padding="sm" radius="md">
                   {editingLocationId === loc.id ? (
